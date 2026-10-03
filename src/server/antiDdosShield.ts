@@ -193,6 +193,16 @@ class AntiDdosShieldService {
         return next();
       }
 
+      // Unconditionally bypass health check probes for Cloud Run, App Engine, GCP Load Balancer & GoogleHC
+      if (
+        rawPath === '/api/health' ||
+        rawPath === '/health' ||
+        rawPath === '/_ah/health' ||
+        userAgent.includes('googlehc')
+      ) {
+        return next();
+      }
+
       // Static UI assets, Vite dev server modules, fonts, images and scripts bypass L7 API throttling
       const isStaticOrDevAsset =
         rawPath.startsWith('/@') ||

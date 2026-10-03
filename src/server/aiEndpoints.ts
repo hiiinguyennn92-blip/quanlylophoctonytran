@@ -615,24 +615,23 @@ Yêu cầu xuất ra JSON cấu trúc:
   }
 }
 
-export interface RoutedSkillInfo {
-  id: 'image_design' | 'circular_27' | 'early_warning' | 'classroom_dynamics' | 'lesson_schedule' | 'parent_bridge' | 'general';
-  name: string;
-  badge: string;
-  modelUsed: string;
-}
+export type {
+  AgentSkillAction,
+  RoutedSkillInfo,
+  ImagePromptBlueprint,
+  SkillRouteId,
+} from '../services/agentSkills/skillTypes.ts';
 
-export interface ImagePromptBlueprint {
-  subject: string;
-  aspectRatio: string;
-  stylePreset: string;
-  masterPrompt8Block: string;
-  exactVietnameseText: string[];
-  negativeConstraints: string[];
-}
+import {
+  resolveSkillRoute,
+  getSkillDefinition,
+} from '../services/agentSkills/skillRegistry.ts';
+
+export { resolveSkillRoute, getSkillDefinition };
 
 export interface AIAssistantRequest {
   userQuery: string;
+  skillRoute?: string;
   contextData: {
     className?: string;
     studentCount?: number;
@@ -650,136 +649,13 @@ export interface AIAssistantRequest {
 export interface AIAssistantResponse {
   reply: string;
   followUps: string[];
-  routedSkill?: RoutedSkillInfo;
-  imagePromptBlueprint?: ImagePromptBlueprint;
+  routedSkill?: import('../services/agentSkills/skillTypes').RoutedSkillInfo;
+  imagePromptBlueprint?: import('../services/agentSkills/skillTypes').ImagePromptBlueprint;
+  actionCard?: import('../services/agentSkills/skillTypes').AgentSkillAction;
 }
 
-export function detectAgentSkillRoute(query: string): RoutedSkillInfo {
-  const q = query.toLowerCase();
-
-  // 1. Image Design Skill (Tạo ảnh, vẽ tranh, poster, giấy khen, infographic...)
-  if (
-    q.includes('ảnh') ||
-    q.includes('hình') ||
-    q.includes('vẽ') ||
-    q.includes('poster') ||
-    q.includes('thiết kế') ||
-    q.includes('infographic') ||
-    q.includes('giấy khen') ||
-    q.includes('banner') ||
-    q.includes('truyện tranh') ||
-    q.includes('scrapbook') ||
-    q.includes('flashcard') ||
-    q.includes('prompt') ||
-    q.includes('bức tranh')
-  ) {
-    return {
-      id: 'image_design',
-      name: 'Nhà Thiết Kế Hình Ảnh Học Đường AI',
-      badge: 'Google Nano Banana 2 (gemini-3.1-flash-image)',
-      modelUsed: 'gemini-3.1-flash-image',
-    };
-  }
-
-  // 2. Circular 27 Evaluation Skill (Nhận xét học bạ, đánh giá phẩm chất, năng lực...)
-  if (
-    q.includes('nhận xét') ||
-    q.includes('học bạ') ||
-    q.includes('thông tư 27') ||
-    q.includes('tt27') ||
-    q.includes('năng lực') ||
-    q.includes('phẩm chất') ||
-    q.includes('đánh giá') ||
-    q.includes('xếp loại') ||
-    q.includes('can-need-action')
-  ) {
-    return {
-      id: 'circular_27',
-      name: 'Đánh Giá Khung Năng Lực TT27',
-      badge: 'Skill Sư Phạm Chuẩn BGD',
-      modelUsed: 'gemini-3.8-flash',
-    };
-  }
-
-  // 3. Early Warning & Attendance Skill
-  if (
-    q.includes('vắng') ||
-    q.includes('nghỉ') ||
-    q.includes('điểm danh') ||
-    q.includes('chuyên cần') ||
-    q.includes('can thiệp') ||
-    q.includes('nguy cơ') ||
-    q.includes('chú ý') ||
-    q.includes('tín hiệu')
-  ) {
-    return {
-      id: 'early_warning',
-      name: 'Can Thiệp Sớm & Chuyên Cần',
-      badge: 'Skill An Toàn & Bảo Vệ Trẻ',
-      modelUsed: 'gemini-3.8-flash',
-    };
-  }
-
-  // 4. Classroom Dynamics & Seating
-  if (
-    q.includes('chỗ ngồi') ||
-    q.includes('sơ đồ') ||
-    q.includes('bàn ghế') ||
-    q.includes('cận thị') ||
-    q.includes('thấp bé') ||
-    q.includes('ghép đôi') ||
-    q.includes('cùng tiến')
-  ) {
-    return {
-      id: 'classroom_dynamics',
-      name: 'Tối Ưu Sơ Đồ & Thị Lực',
-      badge: 'Skill Bố Trí Không Gian',
-      modelUsed: 'gemini-3.8-flash',
-    };
-  }
-
-  // 5. Lesson & Schedule Planning
-  if (
-    q.includes('sinh hoạt') ||
-    q.includes('kế hoạch') ||
-    q.includes('báo giảng') ||
-    q.includes('thời khóa biểu') ||
-    q.includes('tiết học') ||
-    q.includes('trò chơi') ||
-    q.includes('hoạt động')
-  ) {
-    return {
-      id: 'lesson_schedule',
-      name: 'Kế Hoạch Sinh Hoạt & Báo Giảng',
-      badge: 'Skill Điều Phối Học Đường',
-      modelUsed: 'gemini-3.8-flash',
-    };
-  }
-
-  // 6. Parent Bridge & Zalo
-  if (
-    q.includes('phụ huynh') ||
-    q.includes('zalo') ||
-    q.includes('tin nhắn') ||
-    q.includes('thông báo') ||
-    q.includes('gọi điện') ||
-    q.includes('sổ liên lạc')
-  ) {
-    return {
-      id: 'parent_bridge',
-      name: 'Cầu Nối Phụ Huynh & Zalo',
-      badge: 'Skill Ứng Xử Sư Phạm',
-      modelUsed: 'gemini-3.8-flash',
-    };
-  }
-
-  // Default General Assistant
-  return {
-    id: 'general',
-    name: 'Trợ Lý Chủ Nhiệm Toàn Diện',
-    badge: 'Multi-Agent Router (GDPT 2018)',
-    modelUsed: 'gemini-3.8-flash',
-  };
+export function detectAgentSkillRoute(query: string): import('../services/agentSkills/skillTypes').RoutedSkillInfo {
+  return resolveSkillRoute(query, 'auto');
 }
 
 export async function askAIAssistant(params: AIAssistantRequest): Promise<AIAssistantResponse> {
@@ -792,7 +668,9 @@ export async function askAIAssistant(params: AIAssistantRequest): Promise<AIAssi
   const selectedStudent = ctx.selectedStudent ? JSON.stringify(ctx.selectedStudent) : 'Toàn lớp';
   const relevantRecords = sanitizeUntrusted(ctx.relevantRecords || 'Không');
 
-  const routedSkill = detectAgentSkillRoute(query);
+  // Resolve skill through Semantic Skill Registry
+  const routedSkill = resolveSkillRoute(query, params?.skillRoute);
+  const activeSkillDef = getSkillDefinition(routedSkill.id);
 
   const rawHistory = Array.isArray(params?.conversationHistory) ? params.conversationHistory : [];
   const recentHistory = rawHistory
@@ -807,6 +685,9 @@ export async function askAIAssistant(params: AIAssistantRequest): Promise<AIAssi
     ? `\nLỊCH SỬ TRAO ĐỔI GẦN ĐÂY TRONG PHIÊN HỘI THOẠI:\n${recentHistory}\n`
     : '';
 
+  // Get dynamic system directive from single source of truth Skill Registry
+  const skillSpecificDirective = activeSkillDef.systemDirective || '';
+
   const prompt = `
 ${historyBlock}
 <untrusted_user_input>
@@ -814,35 +695,36 @@ Yêu cầu mới nhất của giáo viên chủ nhiệm:
 "${query}"
 </untrusted_user_input>
 
-PHÂN LUỒNG KỸ NĂNG ĐƯỢC CHỈ ĐỊNH:
-- Kỹ năng kích hoạt: ${routedSkill.name} (${routedSkill.id})
+KỸ NĂNG ĐƯỢC ĐIỀU PHỐI (AGENTIC SKILL DISPATCH):
+- Kỹ năng: ${routedSkill.name} (Mã: ${routedSkill.id})
 - Mô hình chuyên dụng: ${routedSkill.modelUsed}
 - Huy hiệu: ${routedSkill.badge}
+- Mục tiêu kỹ năng: ${routedSkill.directiveSummary || 'Hỗ trợ nghiệp vụ giáo viên'}
 
-Dữ liệu lớp học hiện có liên quan (ĐÃ XÁC THỰC TỪ HỆ THỐNG):
+${skillSpecificDirective}
+
+DỮ LIỆU LỚP HỌC HIỆN CÓ (AUTHENTICATED CLASSROOM GROUNDING):
 - Lớp: ${className}
 - Sĩ số: ${studentCount} học sinh
 - Điểm danh hôm nay: ${attendanceToday}
 - Nhiệm vụ học tập: ${tasksSummary}
 - Học sinh đang chọn (nếu có): ${selectedStudent}
-- Ghi chú / Dữ liệu liên quan khác: ${relevantRecords}
+- Ghi chú / Tín hiệu an toàn khác: ${relevantRecords}
 
-ĐẶC BIỆT KHI PHÂN LUỒNG LÀ "image_design" (Nhà Thiết Kế Hình Ảnh Học Đường AI):
-- Bạn đóng vai Master Visual Designer trường học Việt Nam.
-- Bắt buộc phải cung cấp một "imagePromptBlueprint" theo đúng CẤU TRÚC 8 KHỐI CHUẨN MỰC (8-BLOCK ARCHITECTURE) của Google Nano Banana (gemini-3.1-flash-image):
-  [BLOCK 1: HỆ ĐIỀU HÀNH & MỤC TIÊU (SYSTEM TARGET & DIRECTIVE)]
-  [BLOCK 2: CHỦ THỂ & BẢN SẮC VĂN HÓA TIỂU HỌC VIỆT NAM (SUBJECT & CULTURAL CONTEXT)]
-  [BLOCK 3: PHONG CÁCH NGHỆ THUẬT & CHẤT LIỆU (ARTISTIC STYLE & MEDIUM)]
-  [BLOCK 4: BỐ CỤC, THỨ TỰ QUAN SÁT & VÙNG AN TOÀN CHỮ (COMPOSITION, READING ORDER & NEGATIVE SPACE)]
-  [BLOCK 5: ÁNH SÁNG & BẢNG MÀU SƯ PHẠM (LIGHTING & COLOR HARMONY)]
-  [BLOCK 6: QUY CHUẨN KHÓA CHỮ TIẾNG VIỆT CÓ DẤU (EXACT VIETNAMESE TYPOGRAPHY)]
-  [BLOCK 7: BỘ LỌC CẤM & GIỚI HẠN AN TOÀN (NEGATIVE CONSTRAINTS & SANITIZER)]
-  [BLOCK 8: ĐỘ PHÂN GIẢI & TIÊU CHUẨN XUẤT BẢN (RESOLUTION & PRODUCTION FIDELITY)]
-
-Yêu cầu định dạng JSON phản hồi:
+YÊU CẦU ĐỊNH DẠNG JSON PHẢN HỒI:
 {
   "reply": "Nội dung câu trả lời chi tiết sư phạm, phân dòng mạch lạc, có phân tích phương hướng xử lý",
   "followUps": ["Câu hỏi gợi ý tiếp theo 1", "Câu hỏi gợi ý 2"],
+  "actionCard": {
+    "type": "zalo_message hoặc task_create hoặc seating_view hoặc assessment_input hoặc image_design hoặc schedule_view",
+    "title": "Tên hành động khả thi ngay (vd: Gửi tin Zalo cho Phụ huynh, Lưu đánh giá TT27...)",
+    "description": "Mô tả ngắn gọn hành động",
+    "payload": {
+      "message": "Nội dung mẫu nếu là tin nhắn",
+      "targetStudent": "Tên học sinh nếu có",
+      "suggestedLevel": "Hoàn thành tốt / Hoàn thành nếu là đánh giá"
+    }
+  },
   "imagePromptBlueprint": {
     "subject": "Tên chủ đề ngắn gọn",
     "aspectRatio": "16:9 hoặc 3:4 hoặc 1:1 hoặc 4:3",
@@ -852,7 +734,7 @@ Yêu cầu định dạng JSON phản hồi:
     "negativeConstraints": ["watermark", "lorem ipsum", "dị tật tay ngón"]
   }
 }
-(Nếu không phải yêu cầu tạo ảnh, có thể để trường imagePromptBlueprint là null).
+(Nếu không phải yêu cầu tạo ảnh, có thể để trường imagePromptBlueprint là null. Luôn kèm actionCard phù hợp nếu kỹ năng có hành động tiếp nối).
 `;
 
   try {
@@ -870,6 +752,7 @@ Yêu cầu định dạng JSON phản hồi:
       reply: parsed.reply || parsed.answer || parsed.response || response.text || 'Dạ, em đã nhận yêu cầu từ Thầy/Cô.',
       followUps: Array.isArray(parsed.followUps) ? parsed.followUps : ['Xem báo cáo chuyên cần', 'Tạo gợi ý nhận xét'],
       routedSkill,
+      actionCard: parsed.actionCard || undefined,
       imagePromptBlueprint: parsed.imagePromptBlueprint || (routedSkill.id === 'image_design' ? {
         subject: query,
         aspectRatio: '16:9',

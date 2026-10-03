@@ -26,8 +26,22 @@ import {
   ArrowRight,
   Code2,
   Ratio,
+  Info,
+  X,
+  Compass,
 } from 'lucide-react';
-import { RoutedSkillInfo, ImagePromptBlueprint } from '../../server/aiEndpoints';
+import {
+  RoutedSkillInfo,
+  ImagePromptBlueprint,
+  AgentSkillAction,
+  SkillRouteId,
+  AgentSkillDefinition,
+} from '../../services/agentSkills/skillTypes';
+import {
+  getAllSkillManifests,
+  getSkillDefinition,
+} from '../../services/agentSkills/skillRegistry';
+import { TaskRepository } from '../../repositories/dataRepository';
 
 interface ChatMessage {
   id: string;
@@ -37,6 +51,7 @@ interface ChatMessage {
   followUps?: string[];
   routedSkill?: RoutedSkillInfo;
   imagePromptBlueprint?: ImagePromptBlueprint;
+  actionCard?: AgentSkillAction;
   suggestedAction?: {
     type: 'zalo' | 'copy';
     label: string;
@@ -44,56 +59,32 @@ interface ChatMessage {
   };
 }
 
-const AGENT_SKILLS = [
-  {
-    id: 'early_warning',
-    name: 'Can Thiệp Sớm & Chuyên Cần',
-    icon: AlertTriangle,
-    badge: 'Skill An Toàn',
-    color: 'bg-amber-50 text-amber-700 border-amber-200',
-    description: 'Phát hiện học sinh vắng học bất thường, suy giảm động lực và đề xuất can thiệp nhân văn.',
-    samplePrompt: 'Hãy rà soát danh sách học sinh có tín hiệu cần quan tâm và đề xuất biện pháp can thiệp sớm cho từng em.',
-  },
-  {
-    id: 'circular_27',
-    name: 'Đánh Giá Khung Năng Lực TT27',
-    icon: Award,
-    badge: 'Skill Sư Phạm',
-    color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    description: 'Tư vấn nhận xét học bạ, 3 năng lực chung, 7 năng lực đặc thù và 5 phẩm chất theo mô hình Can-Need-Action.',
-    samplePrompt: 'Gợi ý cách nhận xét phẩm chất Chăm chỉ và Năng lực Tự chủ cho học sinh còn rụt rè, chưa mạnh dạn phát biểu.',
-  },
-  {
-    id: 'classroom_dynamics',
-    name: 'Tối Ưu Sơ Đồ & Thị Lực',
-    icon: Eye,
-    badge: 'Skill Không Gian',
-    color: 'bg-sky-50 text-sky-700 border-sky-200',
-    description: 'Tư vấn bố trí vị trí ngồi cho học sinh cận thị, thấp bé, ghép đôi bạn cùng tiến giúp đỡ nhau.',
-    samplePrompt: 'Lớp có các bạn mắt cận thị và bạn hay nói chuyện riêng, em nên tư vấn bố trí sơ đồ bàn ghế như thế nào?',
-  },
-  {
-    id: 'parent_bridge',
-    name: 'Cầu Nối Phụ Huynh & Zalo',
-    icon: Heart,
-    badge: 'Skill Kết Nối',
-    color: 'bg-rose-50 text-rose-700 border-rose-200',
-    description: 'Soạn tin nhắn trao đổi phụ huynh tế nhị, ấm áp, bảo vệ sự tự tôn của học sinh và tăng cường phối hợp.',
-    samplePrompt: 'Soạn tin nhắn Zalo gửi phụ huynh thông báo việc con dạo này tiến bộ rõ rệt trong giờ học nhưng hay quên mang vở bài tập.',
-  },
-  {
-    id: 'ai_image_design',
-    name: 'Thiết Kế Hình Ảnh AI Sư Phạm',
-    icon: Palette,
-    badge: '5 Style Mới',
-    color: 'bg-purple-50 text-purple-700 border-purple-200',
-    description: 'Tạo poster an toàn, poster sự kiện mixed media, truyện tranh 3 phần, sổ tay thực vật scrapbook và địa danh tối giản.',
-    samplePrompt: 'Hãy hướng dẫn tôi thiết kế một poster thông tin an toàn cộng đồng về phòng chống đuối nước mùa hè cho học sinh tiểu học.',
-  },
-];
+export type AgentSkillManifest = AgentSkillDefinition;
+
+const getSkillIcon = (iconName: string) => {
+  switch (iconName) {
+    case 'AlertTriangle':
+      return AlertTriangle;
+    case 'Award':
+      return Award;
+    case 'Eye':
+      return Eye;
+    case 'Heart':
+      return Heart;
+    case 'Calendar':
+      return Calendar;
+    case 'Palette':
+      return Palette;
+    case 'Compass':
+      return Compass;
+    default:
+      return Bot;
+  }
+};
 
 export const AIAgentHubView: React.FC = () => {
   const {
+    currentUser,
     activeClass,
     students,
     parents,
@@ -101,14 +92,18 @@ export const AIAgentHubView: React.FC = () => {
     attendanceRecords,
     attentionSignals,
     tasks,
+    refreshTasks,
     showToast,
     setActiveTab,
   } = useApp();
+
+  const skillsList = getAllSkillManifests();
 
   const [inputQuery, setInputQuery] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedSkillRoute, setSelectedSkillRoute] = useState<string>('auto');
   const [loading, setLoading] = useState(false);
+  const [showSkillInspectorModal, setShowSkillInspectorModal] = useState(false);
 
   // Modal Zalo State
   const [zaloModalOpen, setZaloModalOpen] = useState(false);
@@ -149,9 +144,11 @@ export const AIAgentHubView: React.FC = () => {
     scrollToBottom();
   }, [messages, loading]);
 
-  const handleSendMessage = async (queryText?: string) => {
+  const handleSendMessage = async (queryText?: string, forcedSkill?: string) => {
     const textToSend = (queryText || inputQuery).trim();
     if (!textToSend || loading) return;
+
+    const skillRouteToUse = forcedSkill || selectedSkillRoute;
 
     const userMsg: ChatMessage = {
       id: 'user_' + Date.now(),
@@ -207,6 +204,7 @@ export const AIAgentHubView: React.FC = () => {
 
       const res = await AIClientService.askAssistant({
         userQuery: textToSend,
+        skillRoute: skillRouteToUse,
         contextData: {
           className: activeClass?.className,
           studentCount: students.length,
@@ -231,6 +229,7 @@ export const AIAgentHubView: React.FC = () => {
         followUps: res.followUps || [],
         routedSkill: res.routedSkill,
         imagePromptBlueprint: res.imagePromptBlueprint,
+        actionCard: res.actionCard,
       };
 
       setMessages((prev) => [...prev, agentMsg]);
@@ -255,29 +254,62 @@ export const AIAgentHubView: React.FC = () => {
   };
 
   const getContextualSkillPrompt = (skillId: string, defaultPrompt: string): string => {
-    if (selectedStudent) {
-      if (skillId === 'early_intervention') {
-        return `Em hãy phân tích hồ sơ, chuyên cần và các điểm cần quan tâm của học sinh ${selectedStudent.fullName} và gợi ý giải pháp sư phạm kèm cặp cụ thể.`;
-      }
-      if (skillId === 'tt27_assessment') {
-        return `Gợi ý lời nhận xét học kỳ theo Thông tư 27 cho học sinh ${selectedStudent.fullName} dựa trên năng lực, điểm mạnh và vùng phát triển gần của em.`;
-      }
-      if (skillId === 'parent_bridge') {
-        return `Soạn tin nhắn Zalo gửi tới phụ huynh em ${selectedStudent.fullName} trao đổi tế nhị, ấm áp về tình hình học tập và động viên em rèn luyện.`;
-      }
-      if (skillId === 'visual_design') {
-        return `Gợi ý nội dung phiếu khen thưởng hoặc tuyên dương tuần này cho học sinh ${selectedStudent.fullName}.`;
-      }
-      if (skillId === 'classroom_dynamics') {
-        return `Tư vấn vị trí ngồi phù hợp nhất trong lớp cho em ${selectedStudent.fullName} để tăng khả năng tương tác và tập trung học tập.`;
-      }
-    }
-    return defaultPrompt;
+    const def = getSkillDefinition(skillId as SkillRouteId);
+    return def ? def.createContextualPrompt(selectedStudent, defaultPrompt) : defaultPrompt;
   };
 
   const handleOpenZaloFromMessage = (text: string) => {
     setZaloText(text);
     setZaloModalOpen(true);
+  };
+
+  const handleExecuteAction = async (action?: AgentSkillAction) => {
+    if (!action) return;
+
+    try {
+      if (action.type === 'zalo_message') {
+        const msgText = action.payload?.message || action.payload?.text || '';
+        handleOpenZaloFromMessage(msgText);
+      } else if (action.type === 'task_create') {
+        if (!activeClass || !currentUser) {
+          showToast('Vui lòng chọn lớp học trước khi tạo nhiệm vụ!', 'info');
+          return;
+        }
+        const studentName = action.payload?.targetStudent || selectedStudent?.fullName || 'Học sinh';
+        const taskTitle = action.title || `Kế hoạch kèm cặp em ${studentName}`;
+        const taskDesc = action.description || action.payload?.message || `Kế hoạch do AI Agent Sư Phạm đề xuất cho em ${studentName}.`;
+        const dueAt = format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+
+        await TaskRepository.createTask({
+          classId: activeClass.id,
+          ownerId: currentUser.uid,
+          title: taskTitle,
+          description: taskDesc,
+          dueAt,
+          type: 'nhiệm vụ học tập',
+          audience: studentName,
+        });
+        await refreshTasks();
+        showToast(`Đã tạo nhiệm vụ kèm cặp thành công cho em ${studentName}!`);
+        setActiveTab('tasks');
+      } else if (action.type === 'seating_view') {
+        showToast('Mở sơ đồ lớp học theo tư vấn công thái học & thị lực');
+        setActiveTab('seating');
+      } else if (action.type === 'assessment_input') {
+        showToast('Mở Sổ Đánh Giá Học Sinh Thông tư 27');
+        setActiveTab('learning');
+      } else if (action.type === 'image_design') {
+        showToast('Mở Xưởng Vẽ AI với bản thiết kế 8 khối');
+        setActiveTab('ai-image-design');
+      } else if (action.type === 'schedule_view') {
+        showToast('Mở Thời Khóa Biểu & Lịch Báo Giảng');
+        setActiveTab('schedule');
+      } else {
+        showToast(action.title || 'Đã ghi nhận hành động!');
+      }
+    } catch (err: any) {
+      showToast(`Lỗi thực thi hành động: ${err.message}`, 'error');
+    }
   };
 
   const studentForZalo: Student = selectedStudent || students[0] || {
@@ -336,6 +368,15 @@ export const AIAgentHubView: React.FC = () => {
                 <span>Cần quan tâm: <strong>{attentionSignals.length} em</strong></span>
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => setShowSkillInspectorModal(true)}
+              className="bg-white/10 hover:bg-white/20 active:scale-98 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-1.5 text-xs text-white font-medium transition-all cursor-pointer shadow-xs"
+              title="Xem thông số đặc tả và chuẩn năng lực các kỹ năng AI"
+            >
+              <Compass className="w-4 h-4 text-amber-300" />
+              <span>Đặc Tả Chuẩn Skill ({skillsList.length})</span>
+            </button>
           </div>
         </div>
       </div>
@@ -384,41 +425,71 @@ export const AIAgentHubView: React.FC = () => {
             )}
           </div>
 
-          {/* 4 Agent Skills Cards */}
+          {/* Agent Skills Deck */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
-                5 Nhóm Kỹ Năng Sư Phạm Của Agent
+                {skillsList.length} Nhóm Kỹ Năng Sư Phạm Của Agent
               </h2>
-              <span className="text-[10px] text-slate-400">1.000 Luồng Xử Lý</span>
+              <button
+                type="button"
+                onClick={() => setShowSkillInspectorModal(true)}
+                className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold hover:underline flex items-center gap-0.5"
+              >
+                <span>Chi tiết</span>
+                <ArrowRight className="w-2.5 h-2.5" />
+              </button>
             </div>
 
             <div className="space-y-2">
-              {AGENT_SKILLS.map((skill) => {
-                const Icon = skill.icon;
+              {skillsList.map((skill) => {
+                const Icon = getSkillIcon(skill.iconName);
+                const isSelected = selectedSkillRoute === skill.id;
                 return (
                   <div
                     key={skill.id}
-                    onClick={() => handleSendMessage(getContextualSkillPrompt(skill.id, skill.samplePrompt))}
-                    className="group p-3 rounded-xl border border-slate-100 hover:border-emerald-300 hover:bg-emerald-50/40 transition-all cursor-pointer space-y-1.5"
+                    onClick={() => {
+                      setSelectedSkillRoute(skill.id);
+                      handleSendMessage(getContextualSkillPrompt(skill.id, skill.samplePrompt), skill.id);
+                    }}
+                    className={`group p-3 rounded-xl border transition-all cursor-pointer space-y-1.5 ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500/20'
+                        : 'border-slate-100 hover:border-emerald-300 hover:bg-emerald-50/30'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center border ${skill.color}`}>
                           <Icon className="w-4 h-4" />
                         </div>
-                        <h3 className="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">
-                          {skill.name}
-                        </h3>
+                        <div>
+                          <h3 className="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">
+                            {skill.name}
+                          </h3>
+                        </div>
                       </div>
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 group-hover:bg-emerald-100 group-hover:text-emerald-800 group-hover:border-emerald-200 transition-colors">
                         {skill.badge}
                       </span>
                     </div>
+
                     <p className="text-[11px] text-slate-500 leading-relaxed pl-9">
                       {skill.description}
                     </p>
+
+                    <div className="pl-9 flex items-center justify-between text-[10px] pt-0.5">
+                      <div className="flex items-center gap-1 text-slate-400">
+                        <span className="font-semibold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.2 rounded">
+                          {skill.actionType}
+                        </span>
+                      </div>
+                      <span className="text-slate-400 font-medium group-hover:text-emerald-600 flex items-center gap-0.5">
+                        <span>Kích hoạt</span>
+                        <ArrowRight className="w-2.5 h-2.5" />
+                      </span>
+                    </div>
                   </div>
                 );
               })}
@@ -484,18 +555,6 @@ export const AIAgentHubView: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedSkillRoute('image_design')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 ${
-                  selectedSkillRoute === 'image_design'
-                    ? 'bg-amber-600 text-white shadow-2xs'
-                    : 'bg-white text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <Palette className="w-3 h-3 text-amber-500" />
-                <span>Thiết kế Ảnh AI</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setSelectedSkillRoute('circular_27')}
                 className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 ${
                   selectedSkillRoute === 'circular_27'
@@ -529,6 +588,42 @@ export const AIAgentHubView: React.FC = () => {
               >
                 <Heart className="w-3 h-3 text-rose-500" />
                 <span>Zalo Phụ huynh</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedSkillRoute('classroom_dynamics')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 ${
+                  selectedSkillRoute === 'classroom_dynamics'
+                    ? 'bg-sky-600 text-white shadow-2xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Eye className="w-3 h-3 text-sky-500" />
+                <span>Sơ đồ & Thị lực</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedSkillRoute('image_design')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 ${
+                  selectedSkillRoute === 'image_design'
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Palette className="w-3 h-3 text-amber-500" />
+                <span>Thiết kế Ảnh AI</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedSkillRoute('lesson_schedule')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 ${
+                  selectedSkillRoute === 'lesson_schedule'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Calendar className="w-3 h-3 text-indigo-500" />
+                <span>Sinh hoạt & Báo giảng</span>
               </button>
             </div>
           </div>
@@ -619,6 +714,110 @@ export const AIAgentHubView: React.FC = () => {
                       <div className="flex items-center justify-between text-[10px] text-slate-400 font-sans pt-1 border-t border-slate-900">
                         <span>Chữ khóa tiếng Việt: {msg.imagePromptBlueprint.exactVietnameseText?.join(', ') || 'Không chữ'}</span>
                         <span className="text-emerald-400 font-mono">100% Anti-AI Cliché & Cultural Grounding</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Interactive Agent Skill Action Card */}
+                  {msg.actionCard && (
+                    <div className="mt-3 p-3 rounded-xl bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 text-white border border-emerald-500/30 shadow-md space-y-2.5 font-sans">
+                      <div className="flex items-center justify-between gap-2 border-b border-emerald-800/80 pb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center border border-emerald-400/30">
+                            <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-emerald-200">
+                              {msg.actionCard.title || 'Hành Động Khả Thi Tức Thì'}
+                            </span>
+                            {msg.actionCard.description && (
+                              <p className="text-[10px] text-slate-300 mt-0.5">
+                                {msg.actionCard.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 font-semibold border border-emerald-400/30 shrink-0">
+                          Thực Thi 1-Chạm
+                        </span>
+                      </div>
+
+                      {/* Action execution buttons depending on type */}
+                      <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                        {msg.actionCard.type === 'zalo_message' && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenZaloFromMessage(msg.actionCard?.payload?.message || msg.content)}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>Mở Zalo Gửi Ngay</span>
+                          </button>
+                        )}
+
+                        {msg.actionCard.type === 'image_design' && (
+                          <button
+                            type="button"
+                            onClick={() => handleExecuteAction(msg.actionCard)}
+                            className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-98 text-slate-950 font-bold text-[11px] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                          >
+                            <Palette className="w-3.5 h-3.5" />
+                            <span>Chuyển Sang Xưởng Vẽ AI</span>
+                          </button>
+                        )}
+
+                        {msg.actionCard.type === 'seating_view' && (
+                          <button
+                            type="button"
+                            onClick={() => handleExecuteAction(msg.actionCard)}
+                            className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-98 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Mở Sơ Đồ Lớp Học</span>
+                          </button>
+                        )}
+
+                        {msg.actionCard.type === 'assessment_input' && (
+                          <button
+                            type="button"
+                            onClick={() => handleExecuteAction(msg.actionCard)}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                          >
+                            <Award className="w-3.5 h-3.5" />
+                            <span>Lưu Vào Sổ Đánh Giá</span>
+                          </button>
+                        )}
+
+                        {msg.actionCard.type === 'task_create' && (
+                          <button
+                            type="button"
+                            onClick={() => handleExecuteAction(msg.actionCard)}
+                            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Tạo Nhiệm Vụ Kèm Cặp</span>
+                          </button>
+                        )}
+
+                        {msg.actionCard.type === 'schedule_view' && (
+                          <button
+                            type="button"
+                            onClick={() => handleExecuteAction(msg.actionCard)}
+                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>Xem Lịch Sinh Hoạt & Báo Giảng</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyContent(msg.content)}
+                          className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-[11px] font-semibold flex items-center gap-1 border border-white/20 transition-all cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Sao chép</span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -761,6 +960,163 @@ export const AIAgentHubView: React.FC = () => {
           initialMessage={zaloText}
           student={studentForZalo}
         />
+      )}
+
+      {/* Skill Architecture & Manifest Inspector Modal */}
+      {showSkillInspectorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200/80">
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                  <Compass className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-white tracking-tight">
+                      Đặc Tả Kiến Trúc Kỹ Năng Agent (Skill Manifest)
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                      Standard v3.0
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Hệ thống kỹ năng sư phạm chuyên biệt tích hợp thực thi công cụ (Action Execution Hooks)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSkillInspectorModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-slate-200 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 text-xs text-slate-700">
+              {/* Architecture Core Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+                  <h4 className="font-bold text-emerald-900 mb-1 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-emerald-600" />
+                    <span>Cơ Chế Phân Luồng</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Hỗ trợ chỉ định trực tiếp qua <strong>Dispatcher Bar</strong> hoặc tự động phân luồng theo ý đồ câu hỏi với độ trễ thấp.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-100">
+                  <h4 className="font-bold text-sky-900 mb-1 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-sky-600" />
+                    <span>Chuẩn Sư Phạm Việt Nam</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Tuân thủ nghiêm ngặt <strong>Thông tư 27/2020/TT-BGDĐT</strong>, mô hình Can-Need-Action và triết lý GDPT 2018 không phán xét.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-100">
+                  <h4 className="font-bold text-purple-900 mb-1 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span>Hành Động Khả Thi 1-Chạm</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Mỗi Skill xuất ra <strong>Action Card</strong> tương tác: Mở Zalo, Lưu vào sổ đánh giá, Chuyển sơ đồ lớp, Mở Xưởng vẽ AI.
+                  </p>
+                </div>
+              </div>
+
+              {/* Skills Manifest Grid */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Danh Mục {skillsList.length} Kỹ Năng Sư Phạm Đã Triển Khai
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {skillsList.map((skill) => {
+                    const Icon = getSkillIcon(skill.iconName);
+                    return (
+                      <div
+                        key={skill.id}
+                        className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-emerald-300 transition-all space-y-2.5 shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${skill.color}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-slate-800 text-xs">
+                                {skill.name}
+                              </h5>
+                              <span className="font-mono text-[10px] text-slate-400">
+                                id: {skill.id}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100/70 text-emerald-800 border border-emerald-200">
+                            {skill.badge}
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          {skill.description}
+                        </p>
+
+                        {/* Capabilities Pills */}
+                        <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-200/60">
+                          {skill.capabilities.map((cap, i) => (
+                            <span
+                              key={i}
+                              className="text-[9.5px] px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-medium"
+                            >
+                              ✓ {cap}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Action Trigger Button */}
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[10px] font-semibold text-emerald-700">
+                            Hành động: {skill.actionType}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowSkillInspectorModal(false);
+                              setSelectedSkillRoute(skill.id);
+                              handleSendMessage(getContextualSkillPrompt(skill.id, skill.samplePrompt), skill.id);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-all cursor-pointer"
+                          >
+                            <span>Thử Nghiệm</span>
+                            <ArrowRight className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">
+                Kiến trúc tuân thủ chuẩn Enterprise Agentic Tooling
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowSkillInspectorModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

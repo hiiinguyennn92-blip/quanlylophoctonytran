@@ -1,5 +1,6 @@
 import express from 'express';
 import compression from 'compression';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -27,12 +28,26 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// AI Studio Dev Server must run on port 3000 (ignore process.env.PORT which Cloud Run sets to 8080)
+const isCloudRun = Boolean(process.env.K_SERVICE || process.env.K_REVISION || process.env.CLOUD_RUN_JOB);
+const isProduction =
+  process.env.NODE_ENV === 'production' ||
+  isCloudRun ||
+  process.env.npm_lifecycle_event === 'start';
+
+// Cloud Run requires listening on process.env.PORT (typically 8080)
+// AI Studio dev environment requires port 3000
 function resolvePort(): number {
   const portArgIdx = process.argv.indexOf('--port');
   if (portArgIdx !== -1 && process.argv[portArgIdx + 1]) {
     const p = parseInt(process.argv[portArgIdx + 1], 10);
     if (!isNaN(p)) return p;
+  }
+  if (process.env.PORT) {
+    const p = parseInt(process.env.PORT, 10);
+    if (!isNaN(p)) return p;
+  }
+  if (isCloudRun || isProduction) {
+    return 8080;
   }
   return 3000;
 }
@@ -330,8 +345,8 @@ function createAiRouteHandler(handler: (body: any) => Promise<any>) {
   };
 }
 
-// Health check endpoint for Cloud Run and monitoring probes
-app.get('/api/health', (_req, res) => {
+// Health check endpoints for Cloud Run, App Engine and monitoring probes
+app.get(['/api/health', '/health', '/_ah/health'], (_req, res) => {
   res.status(200).json({
     status: 'ok',
     uptime: process.uptime(),
@@ -372,7 +387,7 @@ app.all('/api/*', (_req, res) => {
 // ============================================================================
 
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: false },
@@ -395,7 +410,12 @@ async function startServer() {
     );
     app.get('*', (_req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+      const indexPath = path.join(__dirname, 'dist', 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).send('Trợ Lý Chủ Nhiệm AI is active.');
+      }
     });
   }
 
@@ -411,13 +431,31 @@ async function startServer() {
   });
 
   const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server listening on 0.0.0.0:${PORT}`);
+    console.log(`Server listening on 0.0.0.0:${PORT} (Production: ${isProduction})`);
   });
+
+  let secondaryServer: any = null;
+  // ONLY run secondary listener in local dev when not in Cloud Run or production
+  if (!isProduction && !isCloudRun && PORT !== 3000) {
+    try {
+      secondaryServer = app.listen(3000, '0.0.0.0', () => {
+        console.log(`Dual-port listener active on 0.0.0.0:3000 for AI Studio environment`);
+      });
+      secondaryServer.on('error', (_err: any) => {
+        // Safe to ignore if port 3000 is unavailable in dev
+      });
+    } catch {}
+  }
 
   // Graceful Shutdown for Cloud Run / Container Lifecycle
   const gracefulShutdown = (signal: string) => {
     console.log(`[Lifecycle] Received ${signal}. Draining active connections...`);
     clearInterval(rateLimitCleanupTimer);
+    if (secondaryServer) {
+      try {
+        secondaryServer.close();
+      } catch {}
+    }
     server.close(() => {
       console.log('[Lifecycle] HTTP server closed gracefully.');
       process.exit(0);

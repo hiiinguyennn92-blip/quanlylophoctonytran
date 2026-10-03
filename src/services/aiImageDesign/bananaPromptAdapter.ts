@@ -68,7 +68,9 @@ ${brief.editContext?.editRequest || brief.purpose || 'Thực hiện tinh chỉnh
         ? brief.prohibitedElements.map((p) => `- Không ${p}`).join('\n')
         : '- Không watermark, không logo lạ, không chữ tiếng Anh vô nghĩa, không chi tiết rùng rợn hoặc méo mó.';
 
-      promptText = `[BLOCK 1: HỆ ĐIỀU HÀNH & MỤC TIÊU NGHỆ THUẬT (SYSTEM TARGET & DIRECTIVE)]
+      promptText = `TARGET: Google Nano Banana 2 (${targetModel}).
+
+[BLOCK 1: HỆ ĐIỀU HÀNH & MỤC TIÊU NGHỆ THUẬT (SYSTEM TARGET & DIRECTIVE)]
 • Target Model: Google Nano Banana 2 (${targetModel})
 • Vai trò: Master Pedagogical Art Director & Visual Educational Designer
 • Mục đích thiết kế: ${brief.purpose}
@@ -76,10 +78,10 @@ ${brief.editContext?.editRequest || brief.purpose || 'Thực hiện tinh chỉnh
 • Định dạng sản phẩm: ${brief.presentationType}
 
 [BLOCK 2: CHỦ THỂ TRUNG TÂM & BẢN SẮC HỌC ĐƯỜNG VIỆT NAM (SUBJECT & CULTURAL CONTEXT)]
-• Chủ thể cốt lõi: ${centerText}
+• KHU VỰC TRUNG TÂM: ${centerText}
 • Bản sắc văn hóa & bối cảnh: Học sinh tiểu học Việt Nam trong đồng phục tinh tươm (áo sơ mi trắng, quần/váy sẫm màu, khăn quàng đỏ Đội viên Thiếu niên Tiền phong rực rỡ từ lớp 3 trở lên), nét mặt tươi sáng, biểu cảm hồn nhiên, thân thiện và giàu năng lượng tích cực.
 • Tương tác & Hành động chính: ${brief.subject}
-• Cấu trúc nội dung chính: ${structureForm}
+• CẤU TRÚC CHÍNH (TINH CHỈNH THEO CHỦ ĐỀ): ${structureForm}
 ${structureDetails}
 • Chi tiết phụ trợ: ${flankingText}
 
@@ -92,10 +94,10 @@ ${structureDetails}
 • Tỷ lệ khung hình chuẩn: ${brief.aspectRatio} (Bắt buộc giữ đúng tỷ lệ không co giãn)
 • Bố cục không gian: ${brief.composition.layout}
 • Điểm nhấn thị giác chính (Focal Point): ${brief.composition.focalPoint}
-• Thứ tự dẫn dắt mắt nhìn (Visual Reading Hierarchy):
+• THỨ TỰ QUAN SÁT:
 ${readingOrderText}
-• Tiền cảnh (Foreground): ${foregroundText}
-• Hậu cảnh (Background): ${backgroundElementsText}
+• TIỀN CẢNH: ${foregroundText}
+• HẬU CẢNH: ${backgroundElementsText}
 • Khoảng thở & Vùng an toàn chữ (Negative Space & Margins): Dành tối thiểu 15-20% diện tích thoáng sạch cho khoảng thở hoặc vị trí gắn tiêu đề, tuyệt đối không để chi tiết phụ chen chúc che khuất chữ.
 
 [BLOCK 5: ÁNH SÁNG, BẦU KHÔNG KHÍ & BẢNG MÀU SƯ PHẠM (LIGHTING & COLOR HARMONY)]
@@ -104,6 +106,7 @@ ${readingOrderText}
 • Cảm xúc truyền tải: Ấm áp, nhân văn, kích thích trí tò mò và niềm vui học tập của học sinh tiểu học.
 
 [BLOCK 6: QUY CHUẨN KHÓA CHỮ TIẾNG VIỆT CÓ DẤU (EXACT VIETNAMESE TYPOGRAPHY)]
+• CHỮ TRONG HÌNH (TINH CHỈNH THEO CHỦ ĐỀ):
 ${
   brief.text.enabled && brief.text.exactStrings?.length
     ? `• Danh sách chữ hiển thị bắt buộc (Exact Strings):
@@ -116,6 +119,9 @@ ${hierarchyText}
 }
 
 [BLOCK 7: BỘ LỌC CẤM & GIỚI HẠN AN TOÀN (NEGATIVE CONSTRAINTS & SANITIZER)]
+• PHẢI GIỮ:
+${preservationText}
+• KHÔNG ĐƯỢC CÓ:
 ${prohibitedText}
 • Không biến dạng bàn tay, thừa/thiếu ngón tay, mắt méo lệch (No anatomical deformation).
 • Không biểu tượng ngoại lai không phù hợp học đường Việt Nam (Không xe bus vàng kiểu Mỹ, không ký hiệu lạ).
