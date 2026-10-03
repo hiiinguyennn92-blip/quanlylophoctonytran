@@ -48,7 +48,7 @@ export const AuthModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
         {/* Banner */}
         <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-6 py-7 text-white text-center">
           <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-xs mx-auto flex items-center justify-center mb-3 shadow-inner">
@@ -62,17 +62,17 @@ export const AuthModal: React.FC = () => {
 
         {/* Feature Highlights */}
         <div className="p-6 space-y-4">
-          <div className="space-y-2 text-xs text-slate-600">
+          <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>Đồng bộ dữ liệu lớp học qua tài khoản Google giáo viên</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>Sổ chủ nhiệm điện tử, sơ đồ lớp và phân tích học sinh cần chú ý</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>Tích hợp Trợ lý AI gợi ý nhận xét học tập và soạn tin nhắn phụ huynh</span>
             </div>
           </div>
@@ -82,7 +82,7 @@ export const AuthModal: React.FC = () => {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold shadow-xs transition-all hover:border-slate-400 cursor-pointer disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold shadow-xs transition-all hover:border-slate-400 cursor-pointer disabled:opacity-50"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -108,10 +108,10 @@ export const AuthModal: React.FC = () => {
 
           <div className="relative my-2">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
+              <div className="w-full border-t border-slate-200 dark:border-slate-800" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-2 text-slate-400">hoặc trải nghiệm nhanh</span>
+              <span className="bg-white dark:bg-slate-900 px-2 text-slate-400 dark:text-slate-400">hoặc trải nghiệm nhanh</span>
             </div>
           </div>
 

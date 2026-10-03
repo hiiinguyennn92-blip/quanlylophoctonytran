@@ -27,8 +27,10 @@ export const TasksView: React.FC = () => {
     students,
     tasks,
     taskCompletions,
-    refreshActiveData,
+    refreshTasks,
     showToast,
+    taskPrefill,
+    setTaskPrefill,
   } = useApp();
 
   const [selectedTaskId, setSelectedTaskId] = useState<string>(tasks[0]?.id || '');
@@ -44,6 +46,16 @@ export const TasksView: React.FC = () => {
   // AI draft message state
   const [aiDraftMessage, setAiDraftMessage] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+
+  // Consume taskPrefill from Schedule or Dashboard
+  React.useEffect(() => {
+    if (taskPrefill) {
+      if (taskPrefill.title) setTitle(taskPrefill.title);
+      if (taskPrefill.subject) setSubject(taskPrefill.subject);
+      if (taskPrefill.dueDate) setDueAt(taskPrefill.dueDate);
+      setShowCreateModal(true);
+    }
+  }, [taskPrefill]);
 
   // Sync selected task
   React.useEffect(() => {
@@ -80,9 +92,10 @@ export const TasksView: React.FC = () => {
         targetGroup: targetGroup === 'all' ? undefined : targetGroup,
       });
 
-      await refreshActiveData();
+      await refreshTasks();
       setSelectedTaskId(newTask.id);
       setShowCreateModal(false);
+      setTaskPrefill(null);
       setTitle('');
       setDescription('');
       showToast('Đã tạo nhiệm vụ mới thành công!');
@@ -101,7 +114,7 @@ export const TasksView: React.FC = () => {
         studentId,
         !currentCompleted
       );
-      await refreshActiveData();
+      await refreshTasks();
     } catch (err: any) {
       showToast('Lỗi khi cập nhật bài nộp: ' + (err.message || ''), 'error');
     }
@@ -110,7 +123,7 @@ export const TasksView: React.FC = () => {
   const handleDeleteTask = async (taskId: string) => {
     try {
       await TaskRepository.deleteTask(taskId);
-      await refreshActiveData();
+      await refreshTasks();
       showToast('Đã xóa nhiệm vụ');
       if (selectedTaskId === taskId && tasks.length > 1) {
         setSelectedTaskId(tasks.find((t) => t.id !== taskId)?.id || '');
@@ -390,7 +403,13 @@ export const TasksView: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-800">Giao nhiệm vụ / Bài tập mới</h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setTaskPrefill(null);
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

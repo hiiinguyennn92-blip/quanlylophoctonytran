@@ -1,6 +1,38 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Global Theme Tokens & Dark Mode Setup */
+:root {
+  color-scheme: light;
+  --bg-app: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-subcard: #f1f5f9;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-app: #e2e8f0;
+}
+
+html.dark, .dark {
+  color-scheme: dark;
+  --bg-app: #080d1a;
+  --bg-card: #0f172a;
+  --bg-subcard: #141f33;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-app: #1c2b42;
+}
+
 @layer base {
+  html {
+    color-scheme: light;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #1e293b;
@@ -9,6 +41,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
+  }
+
+  .dark body, html.dark body {
+    color: #f1f5f9;
+    background-color: #080d1a;
   }
 
   /* Headings typography tightening */
@@ -21,6 +58,393 @@
     background-color: #d1fae5;
     color: #065f46;
   }
+
+  .dark ::selection {
+    background-color: #065f46;
+    color: #a7f3d0;
+  }
+}
+
+/* ==========================================================================
+   Comprehensive Designer Dark Mode System (Icons, Palette & Typography)
+   ========================================================================== */
+@layer utilities {
+  /* ------------------------------------------------------------------------
+     1. SURFACES, CARDS & ELEVATIONS
+     ------------------------------------------------------------------------ */
+  .dark .bg-white:not([data-theme-override]) {
+    background-color: #0f172a !important;
+  }
+
+  .dark .bg-slate-50:not([data-theme-override]) {
+    background-color: #080d1a !important;
+  }
+
+  .dark .bg-slate-100:not([data-theme-override]) {
+    background-color: #141f33 !important;
+  }
+
+  .dark .bg-slate-200:not([data-theme-override]) {
+    background-color: #1c2b44 !important;
+  }
+
+  .dark .hover\:bg-slate-50:hover:not([data-theme-override]) {
+    background-color: #162238 !important;
+  }
+
+  .dark .hover\:bg-slate-100:hover:not([data-theme-override]) {
+    background-color: #1c2b44 !important;
+  }
+
+  .dark .hover\:bg-slate-200:hover:not([data-theme-override]) {
+    background-color: #273956 !important;
+  }
+
+  /* Segmented controls / filter tabs elevated in dark mode */
+  .dark .bg-slate-100 button.bg-white,
+  .dark .bg-slate-100 .bg-white {
+    background-color: #1e293b !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+  }
+  .dark .bg-slate-100 button:not(.bg-white):not([class*="text-"]):not([data-theme-override]) {
+    color: #94a3b8 !important;
+  }
+  .dark .bg-slate-100 button:not(.bg-white):hover:not([data-theme-override]) {
+    color: #f8fafc !important;
+  }
+
+  /* CTA Buttons & badges inside vibrant gradient hero cards must retain pure white surface */
+  .dark [class*="bg-gradient-"] .bg-white,
+  .dark [data-theme-override],
+  .dark [data-theme-override] .bg-white {
+    background-color: #ffffff !important;
+  }
+  .dark [class*="bg-gradient-"] .bg-white.text-emerald-950,
+  .dark [class*="bg-gradient-"] .bg-white .text-emerald-950 {
+    color: #064e3b !important;
+  }
+  .dark [class*="bg-gradient-"] .bg-white.text-rose-700,
+  .dark [class*="bg-gradient-"] .bg-white .text-rose-700 {
+    color: #be123c !important;
+  }
+  .dark [class*="bg-gradient-"] .bg-white.text-slate-900,
+  .dark [class*="bg-gradient-"] .bg-white .text-slate-900 {
+    color: #0f172a !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     2. MÀU CHỮ & TYPOGRAPHY CHO GIAO DIỆN TỐI (WCAG AAA High-Contrast)
+     ------------------------------------------------------------------------ */
+  /* Cấp 1: Tiêu đề, số liệu chính, chỉ số KPI (Tối đa tương phản 16.5:1) */
+  .dark .text-slate-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-slate-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-gray-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-black:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #f8fafc !important;
+  }
+
+  /* Cấp 2: Nhãn in đậm, tên học sinh, tiêu đề thẻ (Tương phản 14.5:1) */
+  .dark .text-slate-850:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-slate-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-gray-800:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #f1f5f9 !important;
+  }
+
+  /* Cấp 3: Văn bản nội dung, dữ liệu ô bảng, nhãn trường (Tương phản 12.5:1) */
+  .dark .text-slate-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-gray-700:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #e2e8f0 !important;
+  }
+
+  /* Cấp 4: Văn bản phụ, chú thích, thông tin bổ sung (Tương phản 10:1) */
+  .dark .text-slate-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-gray-600:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #cbd5e1 !important;
+  }
+
+  /* Cấp 5: Thời gian, metadata, nhãn phụ, icon mờ (Tương phản 7.5:1 chuẩn WCAG AA/AAA) */
+  .dark .text-slate-500:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-gray-500:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #94a3b8 !important;
+  }
+
+  /* Cấp 6: Nhãn chú thích, đơn vị đo, mã học sinh, icon phụ (TUYỆT ĐỐI KHÔNG DÙNG #64748b - Đạt 7.5:1) */
+  .dark .text-slate-400:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-gray-400:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #94a3b8 !important;
+  }
+
+  /* Cấp 7: Placeholder trong ô input/textarea - dịu mắt, rõ ràng, không bị chìm tối */
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #94a3b8 !important;
+    opacity: 0.75;
+  }
+
+  .dark select option {
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     3. TỐI ƯU MÀU CHỮ ĐẶC TRƯNG / CHUYÊN BIỆT TRÁNH CHÌM TRÊN NỀN TỐI
+     (Chuyển đổi màu đậm của giao diện sáng thành sắc thái dạ quang sáng rõ)
+     ------------------------------------------------------------------------ */
+  /* Xanh ngọc giáo dục (Emerald / Green) */
+  .dark .text-emerald-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-emerald-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-emerald-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-emerald-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-emerald-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-green-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-green-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-green-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-green-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-green-600:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #34d399 !important; /* Emerald 400 */
+  }
+
+  .dark .text-emerald-500:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-green-500:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #6ee7b7 !important; /* Emerald 300 */
+  }
+
+  /* Xanh chàm trí tuệ / AI / Lịch dạy (Indigo / Violet) */
+  .dark .text-indigo-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-indigo-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-indigo-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-indigo-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-indigo-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-indigo-500:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #818cf8 !important; /* Indigo 400 */
+  }
+
+  .dark .text-violet-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-violet-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-violet-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-violet-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-violet-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-violet-500:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #a78bfa !important; /* Violet 400 */
+  }
+
+  /* Hổ phách / Lưu ý / Thi đua (Amber / Yellow / Orange) */
+  .dark .text-amber-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-amber-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-amber-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-amber-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-amber-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-amber-500:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-yellow-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-yellow-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-yellow-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-orange-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-orange-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-orange-600:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #fbbf24 !important; /* Amber 400 */
+  }
+
+  /* Đỏ / Nghỉ học / Cảnh báo / Tuyên dương (Rose / Red) */
+  .dark .text-rose-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-rose-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-rose-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-rose-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-rose-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-rose-500:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-red-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-red-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-red-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-red-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-red-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-red-500:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #fb7185 !important; /* Rose 400 */
+  }
+
+  /* Xanh dương / Thời khóa biểu / Thông tin (Sky / Blue) */
+  .dark .text-sky-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-sky-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-sky-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-sky-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-sky-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-sky-500:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-blue-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-blue-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-blue-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-blue-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-blue-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-blue-500:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #38bdf8 !important; /* Sky 400 */
+  }
+
+  /* Tím / Đánh giá phát triển (Purple) */
+  .dark .text-purple-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-purple-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-purple-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-purple-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-purple-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-purple-500:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #c084fc !important; /* Purple 400 */
+  }
+
+  /* Xanh cổ vịt / Cyan (Teal / Cyan) */
+  .dark .text-teal-950:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-teal-900:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-teal-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-teal-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-teal-600:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-cyan-800:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-cyan-700:not([data-theme-override]):not([class*="dark:text-"]),
+  .dark .text-cyan-600:not([data-theme-override]):not([class*="dark:text-"]) {
+    color: #2dd4bf !important; /* Teal 400 */
+  }
+
+  /* ------------------------------------------------------------------------
+     4. TỐI ƯU HỘP CHỨA BIỂU TƯỢNG (ICON BADGES & CONTAINERS) TRONG DARK MODE
+     (Hộp biểu tượng có độ trong suốt tinh tế, viền mảnh dạ quang, icon nổi bật)
+     ------------------------------------------------------------------------ */
+  .dark .bg-emerald-50:not([data-theme-override]),
+  .dark .bg-emerald-50\/70:not([data-theme-override]),
+  .dark .bg-emerald-50\/80:not([data-theme-override]),
+  .dark .bg-emerald-50\/90:not([data-theme-override]),
+  .dark .bg-emerald-100:not([data-theme-override]) {
+    background-color: rgba(6, 78, 59, 0.35) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+  }
+
+  .dark .bg-indigo-50:not([data-theme-override]),
+  .dark .bg-indigo-50\/60:not([data-theme-override]),
+  .dark .bg-indigo-100:not([data-theme-override]) {
+    background-color: rgba(49, 46, 129, 0.35) !important;
+    border-color: rgba(99, 102, 241, 0.3) !important;
+  }
+
+  .dark .bg-amber-50:not([data-theme-override]),
+  .dark .bg-amber-50\/70:not([data-theme-override]),
+  .dark .bg-amber-50\/80:not([data-theme-override]),
+  .dark .bg-amber-100:not([data-theme-override]) {
+    background-color: rgba(120, 53, 15, 0.35) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+
+  .dark .bg-rose-50:not([data-theme-override]),
+  .dark .bg-rose-50\/70:not([data-theme-override]),
+  .dark .bg-rose-50\/80:not([data-theme-override]),
+  .dark .bg-rose-100:not([data-theme-override]),
+  .dark .bg-red-50:not([data-theme-override]),
+  .dark .bg-red-100:not([data-theme-override]) {
+    background-color: rgba(136, 19, 55, 0.35) !important;
+    border-color: rgba(244, 63, 94, 0.3) !important;
+  }
+
+  .dark .bg-sky-50:not([data-theme-override]),
+  .dark .bg-sky-50\/70:not([data-theme-override]),
+  .dark .bg-sky-100:not([data-theme-override]),
+  .dark .bg-blue-50:not([data-theme-override]),
+  .dark .bg-blue-100:not([data-theme-override]) {
+    background-color: rgba(12, 74, 110, 0.35) !important;
+    border-color: rgba(14, 165, 233, 0.3) !important;
+  }
+
+  .dark .bg-purple-50:not([data-theme-override]),
+  .dark .bg-purple-100:not([data-theme-override]) {
+    background-color: rgba(88, 28, 135, 0.35) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     5. ĐƯỜNG VIỀN & PHÂN CÁCH (BORDERS & DIVIDERS)
+     ------------------------------------------------------------------------ */
+  .dark .border-slate-200:not([data-theme-override]),
+  .dark .border-slate-200\/90:not([data-theme-override]),
+  .dark .border-slate-200\/80:not([data-theme-override]),
+  .dark .border-slate-200\/60:not([data-theme-override]),
+  .dark .border-slate-100:not([data-theme-override]),
+  .dark .border-slate-300:not([data-theme-override]) {
+    border-color: #1e293b !important;
+  }
+
+  .dark .border-emerald-200:not([data-theme-override]),
+  .dark .border-emerald-300:not([data-theme-override]) {
+    border-color: rgba(16, 185, 129, 0.3) !important;
+  }
+
+  .dark .border-indigo-200:not([data-theme-override]),
+  .dark .border-indigo-300:not([data-theme-override]) {
+    border-color: rgba(99, 102, 241, 0.3) !important;
+  }
+
+  .dark .border-amber-200:not([data-theme-override]),
+  .dark .border-amber-300:not([data-theme-override]) {
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+
+  .dark .border-rose-200:not([data-theme-override]),
+  .dark .border-rose-300:not([data-theme-override]),
+  .dark .border-red-200:not([data-theme-override]) {
+    border-color: rgba(244, 63, 94, 0.3) !important;
+  }
+
+  .dark .border-sky-200:not([data-theme-override]),
+  .dark .border-sky-300:not([data-theme-override]),
+  .dark .border-blue-200:not([data-theme-override]) {
+    border-color: rgba(14, 165, 233, 0.3) !important;
+  }
+
+  .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-slate-200\/80 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #1e293b !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     6. BIỂU MẪU NHẬP LIỆU (INPUT, SELECT, TEXTAREA)
+     ------------------------------------------------------------------------ */
+  .dark input:not([type="checkbox"]):not([type="radio"]):not([data-theme-override]),
+  .dark select:not([data-theme-override]),
+  .dark textarea:not([data-theme-override]) {
+    background-color: #141f33 !important;
+    color: #f1f5f9 !important;
+    border-color: #29384e !important;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #94a3b8 !important;
+    opacity: 0.75;
+  }
+
+  .dark input:focus-visible,
+  .dark select:focus-visible,
+  .dark textarea:focus-visible {
+    border-color: #10b981 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     7. BẢNG DỮ LIỆU & DANH SÁCH (TABLE & LIST VIEW)
+     ------------------------------------------------------------------------ */
+  .dark table th {
+    background-color: #0d1526 !important;
+    color: #cbd5e1 !important;
+    border-color: #1e293b !important;
+  }
+
+  .dark table td {
+    border-color: #1e293b !important;
+  }
+
+  .dark tr:hover td {
+    background-color: #162238 !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   8. TỐI ƯU ĐỘ SẮC NÉT VÀ ĐỘ TƯƠNG PHẢN CỦA ICON SVG TRONG GIAO DIỆN TỐI
+   -------------------------------------------------------------------------- */
+.dark svg.lucide,
+.dark svg {
+  shape-rendering: geometricPrecision;
 }
 
 /* Tabular figures for numbers */
@@ -54,10 +478,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   }
 }
 
-/* Custom subtle scrollbar */
+/* Custom subtle scrollbar with Dark Mode support */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -70,3 +494,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   background: rgba(100, 116, 139, 0.55);
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}

@@ -27,7 +27,7 @@ export const JournalView: React.FC = () => {
     currentUser,
     students,
     journalEntries,
-    refreshActiveData,
+    refreshEvents,
     showToast,
   } = useApp();
 
@@ -83,7 +83,7 @@ export const JournalView: React.FC = () => {
         nextAction: nextAction || undefined,
       });
 
-      await refreshActiveData();
+      await refreshEvents();
       setShowAddModal(false);
       setContent('');
       setNextAction('');
@@ -97,7 +97,7 @@ export const JournalView: React.FC = () => {
   const handleDeleteEntry = async (id: string) => {
     try {
       await JournalRepository.deleteEntry(id);
-      await refreshActiveData();
+      await refreshEvents();
       showToast('Đã xóa mục nhật ký');
     } catch (err: any) {
       showToast('Lỗi khi xóa: ' + (err.message || ''), 'error');

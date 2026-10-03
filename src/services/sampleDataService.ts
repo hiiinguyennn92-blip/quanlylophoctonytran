@@ -8,6 +8,8 @@ import {
   TaskRepository,
   JournalRepository,
   EventRepository,
+  TeachingScheduleRepository,
+  StudentLearningJournalRepository,
 } from '../repositories/dataRepository';
 import { format, subDays } from 'date-fns';
 
@@ -333,6 +335,138 @@ export class SampleDataService {
       location: 'Quảng trường Ba Đình & Bảo tàng Lịch sử Quốc gia',
       description: 'Hoạt động ngoại khóa giáo dục truyền thống',
       participants: 'Giáo viên và học sinh toàn khối 3',
+    });
+
+    // 9. Teaching Schedule Recurring Rules
+    const r1 = await TeachingScheduleRepository.createRule({
+      classId,
+      ownerId,
+      dayOfWeek: 1, // Thứ Hai
+      periodNumber: 1,
+      startTime: '07:30',
+      endTime: '08:05',
+      subjectName: 'Toán',
+      lessonTitle: 'Phép chia hết và phép chia có dư',
+      effectiveFrom: todayStr,
+      active: true,
+    });
+    await TeachingScheduleRepository.createRule({
+      classId,
+      ownerId,
+      dayOfWeek: 1,
+      periodNumber: 2,
+      startTime: '08:15',
+      endTime: '08:50',
+      subjectName: 'Tiếng Việt',
+      lessonTitle: 'Tập đọc: Mùa thu của em',
+      effectiveFrom: todayStr,
+      active: true,
+    });
+    await TeachingScheduleRepository.createRule({
+      classId,
+      ownerId,
+      dayOfWeek: 1,
+      periodNumber: 3,
+      startTime: '09:15',
+      endTime: '09:50',
+      subjectName: 'Tự nhiên và Xã hội',
+      lessonTitle: 'Cơ quan tiêu hóa và bảo vệ sức khỏe',
+      effectiveFrom: todayStr,
+      active: true,
+    });
+    await TeachingScheduleRepository.createRule({
+      classId,
+      ownerId,
+      dayOfWeek: 1,
+      periodNumber: 4,
+      startTime: '10:00',
+      endTime: '10:35',
+      subjectName: 'Hoạt động trải nghiệm',
+      lessonTitle: 'Sinh hoạt dưới cờ đầu tuần',
+      effectiveFrom: todayStr,
+      active: true,
+    });
+
+    // 10. Teaching Schedule Entries for Today
+    const schedule1 = await TeachingScheduleRepository.create({
+      classId,
+      ownerId,
+      date: todayStr,
+      periodNumber: 1,
+      startTime: '07:30',
+      endTime: '08:05',
+      subjectName: 'Toán',
+      lessonTitle: 'Phép chia số có hai chữ số cho số có một chữ số',
+      room: 'Phòng học 3A1',
+      preparationNote: 'Chuẩn bị que tính, bảng con và phiếu học tập nhóm đôi',
+      note: 'Học sinh hiểu bài tốt, thực hành bảng con nhanh',
+      status: 'completed',
+      source: 'recurring',
+      recurringRuleId: r1.id,
+    });
+
+    await TeachingScheduleRepository.create({
+      classId,
+      ownerId,
+      date: todayStr,
+      periodNumber: 2,
+      startTime: '08:15',
+      endTime: '08:50',
+      subjectName: 'Tiếng Việt',
+      lessonTitle: 'Luyện từ và câu: Mở rộng vốn từ về Nhà trường',
+      room: 'Phòng học 3A1',
+      preparationNote: 'Tranh ảnh về khuôn viên trường học và từ điển học sinh',
+      status: 'scheduled',
+      source: 'manual',
+    });
+
+    await TeachingScheduleRepository.create({
+      classId,
+      ownerId,
+      date: todayStr,
+      periodNumber: 3,
+      startTime: '09:15',
+      endTime: '09:50',
+      subjectName: 'Tự nhiên và Xã hội',
+      lessonTitle: 'Thực hành: Chăm sóc răng miệng và giữ vệ sinh cá nhân',
+      room: 'Phòng học 3A1',
+      preparationNote: 'Mô hình hàm răng giáo cụ và bàn chải mẫu',
+      status: 'scheduled',
+      source: 'manual',
+    });
+
+    // 11. Student Learning Journals (Nhật ký học tập học sinh)
+    await StudentLearningJournalRepository.create({
+      classId,
+      ownerId,
+      studentId: createdStudents[0].id, // Minh An
+      scheduleEntryId: schedule1.id,
+      date: todayStr,
+      subject: 'Toán',
+      lessonTitle: 'Phép chia số có hai chữ số cho số có một chữ số',
+      type: 'achievement',
+      observation: 'Em nắm rất chắc bảng chia, xung phong lên bảng thực hiện đúng phép tính và giải thích rõ ràng từng bước.',
+      evidence: 'Đạt điểm tối đa phiếu thực hành cá nhân (10/10)',
+      supportAction: 'Giao thêm 1 bài toán nâng cao để phát triển tư duy mở rộng',
+      tags: ['hoàn thành tốt', 'chủ động'],
+      privateToTeacher: false,
+    });
+
+    await StudentLearningJournalRepository.create({
+      classId,
+      ownerId,
+      studentId: createdStudents[6].id, // Tuấn Kiệt
+      scheduleEntryId: schedule1.id,
+      date: todayStr,
+      subject: 'Toán',
+      lessonTitle: 'Phép chia số có hai chữ số cho số có một chữ số',
+      type: 'difficulty',
+      observation: 'Trong tiết học, em còn ngập ngừng khi tìm số dư ở lượt chia thứ hai.',
+      evidence: 'Chưa làm kịp 2 câu cuối ở phiếu bài tập nhóm',
+      supportAction: 'Cô hướng dẫn lại quy trình 3 bước (Chia - Nhân - Trừ), ghép bạn Bảo Châu hỗ trợ thêm trong 10 phút đầu giờ mai',
+      followUpDate: format(subDays(today, -1), 'yyyy-MM-dd'),
+      tags: ['cần ôn tập', 'cần theo dõi'],
+      privateToTeacher: false,
     });
 
     return classId;

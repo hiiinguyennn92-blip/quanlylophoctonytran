@@ -25,10 +25,13 @@ import {
   ExternalLink,
   ShieldCheck,
   Info,
+  BookOpen,
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
+import { vi } from 'date-fns/locale';
 import { isBirthdayToday } from '../../utils/dateUtils';
-import { Task, AttentionSignal, Student, ParentContact } from '../../types';
+import { Task, AttentionSignal, Student, ParentContact, TeachingScheduleEntry, StudentLearningJournalEntry } from '../../types';
+import { LearningTrendAnalysis } from '../dashboard/LearningTrendAnalysis';
 
 type DrillDownTarget =
   | { type: 'students_summary' }
@@ -50,12 +53,19 @@ export const DashboardView: React.FC = () => {
     competitionEntries,
     classEvents,
     attentionSignals,
+    teachingSchedules,
+    studentLearningJournals,
+    completeTeachingScheduleEntry,
+    setLearningJournalPrefill,
+    setTaskPrefill,
+    showToast,
     setActiveTab,
     setSelectedStudentForDetail,
     seedDemoClass,
   } = useApp();
 
   const [drillDown, setDrillDown] = useState<DrillDownTarget | null>(null);
+  const [dashboardScheduleDetail, setDashboardScheduleDetail] = useState<TeachingScheduleEntry | null>(null);
   const [attFilter, setAttFilter] = useState<'all' | 'excused_absence' | 'unexcused_absence' | 'late' | 'present'>('all');
   const [stuGroupFilter, setStuGroupFilter] = useState<string>('all');
 
@@ -158,6 +168,45 @@ export const DashboardView: React.FC = () => {
     return Math.round(sum / valid.length);
   }, [weekAttendanceTrend]);
 
+  // Today Teaching Schedule
+  const todaySchedules = React.useMemo(() => {
+    return teachingSchedules
+      .filter((s) => s.date === todayStr)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [teachingSchedules, todayStr]);
+
+  const currentTimeStr = format(new Date(), 'HH:mm');
+
+  const { currentPeriod, nextPeriod } = React.useMemo(() => {
+    let curr: TeachingScheduleEntry | null = null;
+    let nxt: TeachingScheduleEntry | null = null;
+    for (let i = 0; i < todaySchedules.length; i++) {
+      const s = todaySchedules[i];
+      if (currentTimeStr >= s.startTime && currentTimeStr <= s.endTime) {
+        curr = s;
+        if (i + 1 < todaySchedules.length) nxt = todaySchedules[i + 1];
+        break;
+      } else if (currentTimeStr < s.startTime && !nxt) {
+        nxt = s;
+      }
+    }
+    return { currentPeriod: curr, nextPeriod: nxt };
+  }, [todaySchedules, currentTimeStr]);
+
+  // Morning Fast Flow Status calculations
+  const isAttendanceDone = todayAttendance.recordedTotal > 0;
+  const absentCount = todayAttendance.excused + todayAttendance.unexcused;
+  const isNotificationDone = isAttendanceDone && absentCount === 0;
+  const isScheduleReady = todaySchedules.length > 0;
+  const flowCompletedCount = (isAttendanceDone ? 1 : 0) + (isAttendanceDone ? 1 : 0) + (isScheduleReady ? 1 : 0);
+
+  // Student Learning Journal follow-ups for today
+  const todayFollowUps = React.useMemo(() => {
+    return studentLearningJournals.filter(
+      (j) => j.followUpDate === todayStr || (j.followUpDate && j.followUpDate <= todayStr && !j.privateToTeacher)
+    );
+  }, [studentLearningJournals, todayStr]);
+
   return (
     <div className="space-y-6">
       {/* Fallback Banner if no active class selected */}
@@ -182,77 +231,79 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* Header Welcome Hero Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 rounded-3xl p-6 sm:p-7 text-white shadow-sm border border-emerald-600/50">
-        {/* Soft decorative background elements */}
-        <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-emerald-500/20 blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-8 -left-8 w-48 h-48 rounded-full bg-teal-400/20 blur-xl pointer-events-none" />
+      {/* Header Executive Banner with Ambient Pedagogical Warmth */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-950 rounded-3xl p-5 sm:p-6 text-white border border-emerald-700/40 shadow-sm transition-all">
+        {/* Ambient Glow Orbs */}
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-teal-500/15 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-emerald-100 text-xs font-semibold uppercase tracking-wider">
-              <span className="px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-xs border border-white/20">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 {activeClass?.schoolName || 'Trường Tiểu học'}
               </span>
-              <span>·</span>
-              <span>Năm học {activeClass?.schoolYear || '2025 - 2026'}</span>
+              <span className="text-emerald-400/60 hidden sm:inline">·</span>
+              <span className="text-[11px] font-medium text-emerald-200/80">
+                Năm học {activeClass?.schoolYear || '2025 - 2026'}
+              </span>
+              <span className="text-emerald-400/60 hidden sm:inline">·</span>
+              <span className="text-[11px] font-medium text-emerald-200/80 capitalize">
+                {format(new Date(), 'EEEE, dd/MM/yyyy', { locale: vi })}
+              </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mt-2 text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight">
               Lớp {activeClass?.className || '---'} · GVCN: {activeClass?.teacherName || 'Thầy/Cô'}
             </h1>
 
-            <p className="text-xs sm:text-sm text-emerald-100/90 mt-1.5 max-w-xl leading-relaxed">
-              {timeGreeting}
+            <p className="text-xs sm:text-sm text-emerald-100/90 font-medium pt-0.5 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+              <span>{timeGreeting}</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 self-stretch md:self-auto shrink-0 flex-wrap">
+          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center flex-wrap">
             <button
               onClick={() => setActiveTab('attendance')}
-              className="flex-1 md:flex-none px-4 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
+              data-theme-override
+              className="px-4 py-2.5 bg-white text-emerald-950 hover:bg-emerald-50 rounded-xl text-xs font-bold shadow-xs hover:shadow transition-all cursor-pointer flex items-center gap-2 group"
             >
-              <CheckSquare className="w-4 h-4 text-emerald-600 stroke-[2.2]" />
-              <span>Điểm danh 1 phút</span>
+              <CheckSquare className="w-4 h-4 text-emerald-700 stroke-[2.2] group-hover:scale-110 transition-transform" />
+              <span>Điểm danh ngay</span>
             </button>
             <button
               onClick={() => setActiveTab('ai-comments')}
-              className="flex-1 md:flex-none px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white border border-white/25 rounded-xl text-xs font-bold backdrop-blur-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
+              className="px-4 py-2.5 bg-emerald-800/80 hover:bg-emerald-700 text-white border border-emerald-400/30 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-xs group"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>AI Viết nhận xét</span>
+              <Sparkles className="w-4 h-4 text-amber-300 group-hover:rotate-12 transition-transform" />
+              <span>AI Nhận xét TT27</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      {/* KPI Cards Grid - Executive Metric Tiles */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* 1. Sĩ số */}
         <div
           onClick={() => setDrillDown({ type: 'students_summary' })}
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-emerald-300 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-          title="Bấm để xem danh sách & phân tổ học sinh"
+          className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-600/60 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Sĩ số học sinh</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Users className="w-4 h-4 stroke-[2]" />
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold">
+            <span>Sĩ số lớp học</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight tabular-nums">
               {students.length}
             </span>
-            <span className="text-xs text-slate-400">/ {activeClass?.expectedStudentCount || 35} em</span>
+            <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">học sinh</span>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span className="text-slate-500 font-medium">
-              {maleCount} nam · {femaleCount} nữ
-            </span>
-            <span className="text-emerald-700 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-              Chi tiết <ArrowUpRight className="w-3 h-3" />
-            </span>
+          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate pt-1 border-t border-slate-100 dark:border-slate-800/60">
+            {maleCount} nam · {femaleCount} nữ
           </div>
         </div>
 
@@ -262,177 +313,513 @@ export const DashboardView: React.FC = () => {
             setAttFilter('all');
             setDrillDown({ type: 'attendance_today' });
           }}
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-          title="Bấm để kiểm tra danh sách vắng / muộn hôm nay"
+          className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:-translate-y-0.5 hover:border-sky-300 dark:hover:border-sky-600/60 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Chuyên cần hôm nay</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <CheckSquare className="w-4 h-4 stroke-[2]" />
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold">
+            <span>Chuyên cần hôm nay</span>
+            <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <CheckSquare className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight tabular-nums">
               {todayAttendance.recordedTotal > 0 ? `${todayAttendance.present}` : '0'}
             </span>
-            <span className="text-xs text-slate-400">/ {students.length} có mặt</span>
+            <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">/ {students.length} có mặt</span>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] truncate">
+          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 truncate pt-1 border-t border-slate-100 dark:border-slate-800/60">
             {todayAttendance.recordedTotal === 0 ? (
-              <span className="text-slate-400 italic">Chưa điểm danh buổi sáng</span>
+              <span className="text-slate-400 dark:text-slate-400 font-medium">Chưa điểm danh</span>
+            ) : todayAttendance.excused === 0 && todayAttendance.unexcused === 0 && todayAttendance.late === 0 ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% có mặt đủ</span>
             ) : (
-              <div className="flex items-center gap-1.5 truncate">
-                {todayAttendance.excused > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAttFilter('excused_absence');
-                      setDrillDown({ type: 'attendance_today', initialFilter: 'excused_absence' });
-                    }}
-                    className="text-amber-800 font-semibold hover:underline bg-amber-50 px-1.5 py-0.5 rounded cursor-pointer"
-                  >
-                    {todayAttendance.excused} có phép
-                  </button>
-                )}
-                {todayAttendance.unexcused > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAttFilter('unexcused_absence');
-                      setDrillDown({ type: 'attendance_today', initialFilter: 'unexcused_absence' });
-                    }}
-                    className="text-rose-800 font-bold hover:underline bg-rose-50 px-1.5 py-0.5 rounded cursor-pointer"
-                  >
-                    {todayAttendance.unexcused} không phép
-                  </button>
-                )}
-                {todayAttendance.late > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAttFilter('late');
-                      setDrillDown({ type: 'attendance_today', initialFilter: 'late' });
-                    }}
-                    className="text-purple-800 font-medium hover:underline bg-purple-50 px-1.5 py-0.5 rounded cursor-pointer"
-                  >
-                    {todayAttendance.late} muộn
-                  </button>
-                )}
-                {todayAttendance.excused === 0 && todayAttendance.unexcused === 0 && todayAttendance.late === 0 && (
-                  <span className="text-emerald-700 font-semibold">100% hiện diện đầy đủ</span>
-                )}
-              </div>
+              <span className="text-amber-600 dark:text-amber-400 font-medium">
+                {todayAttendance.excused > 0 ? `${todayAttendance.excused} phép ` : ''}
+                {todayAttendance.unexcused > 0 ? `${todayAttendance.unexcused} k.phép ` : ''}
+                {todayAttendance.late > 0 ? `${todayAttendance.late} muộn` : ''}
+              </span>
             )}
-            <span className="text-blue-700 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform shrink-0">
-              Kiểm diện <ArrowUpRight className="w-3 h-3" />
-            </span>
           </div>
         </div>
 
-        {/* 3. Nhiệm vụ & Bài tập */}
+        {/* 3. Nhiệm vụ */}
         <div
           onClick={() => {
-            if (tasks.length > 0) {
-              setDrillDown({ type: 'task_detail', task: tasks[0] });
-            } else {
-              setActiveTab('tasks');
-            }
+            if (tasks.length > 0) setDrillDown({ type: 'task_detail', task: tasks[0] });
+            else setActiveTab('tasks');
           }}
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-indigo-300 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-          title="Bấm để kiểm tra tiến độ nộp bài của học sinh"
+          className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-600/60 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Nhiệm vụ & Bài tập</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <ListTodo className="w-4 h-4 stroke-[2]" />
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold">
+            <span>Nhiệm vụ & Bài tập</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <ListTodo className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight tabular-nums">
               {tasks.length}
             </span>
-            <span className="text-xs text-slate-400">bài đang theo dõi</span>
+            <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">bài theo dõi</span>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span className="text-slate-500 font-medium">Theo dõi nộp bài</span>
-            <span className="text-indigo-700 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-              Kiểm tra <ArrowUpRight className="w-3 h-3" />
-            </span>
+          <div className="mt-2 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium truncate pt-1 border-t border-slate-100 dark:border-slate-800/60">
+            {todayTasks.length > 0 ? `${todayTasks.length} bài giao hôm nay` : 'Xem tiến độ nộp bài'}
           </div>
         </div>
 
-        {/* 4. Học sinh cần quan tâm */}
+        {/* 4. Cần quan tâm */}
         <div
           onClick={() => setDrillDown({ type: 'attention_all' })}
-          className={`bg-white p-4 sm:p-5 rounded-2xl border shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group ${
-            attentionSignals.length > 0
-              ? 'border-amber-200/80 hover:border-amber-400'
-              : 'border-slate-200/80 hover:border-slate-300'
-          }`}
-          title="Bấm để xem căn cứ và bằng chứng cần quan tâm"
+          className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-600/60 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Cần xem xét thêm</span>
-            <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
-                attentionSignals.length > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'
-              }`}
-            >
-              <AlertTriangle className="w-4 h-4 stroke-[2]" />
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold">
+            <span>Cần lưu ý đặc biệt</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <AlertTriangle className={`w-4 h-4 ${attentionSignals.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`} />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span
-              className={`text-2xl sm:text-3xl font-bold tabular-nums tracking-tight ${
-                attentionSignals.length > 0 ? 'text-amber-800' : 'text-slate-900'
-              }`}
-            >
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className={`text-3xl font-extrabold tracking-tight tabular-nums ${attentionSignals.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-slate-100'}`}>
               {attentionSignals.length}
             </span>
-            <span className="text-xs text-slate-400">em có dấu hiệu</span>
+            <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">học sinh</span>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span className="text-slate-500 font-medium truncate">Minh chứng thực tế</span>
-            <span className="text-amber-800 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform shrink-0">
-              Chi tiết <ChevronRight className="w-3 h-3" />
-            </span>
+          <div className="mt-2 text-[11px] font-medium truncate pt-1 border-t border-slate-100 dark:border-slate-800/60">
+            {attentionSignals.length > 0 ? (
+              <span className="text-amber-600 dark:text-amber-400 font-medium">Có tín hiệu quan sát</span>
+            ) : (
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Nề nếp lớp ổn định</span>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Teacher's Morning 3-Step Fast Flow (Luồng Công việc Nhanh Đầu Ngày) */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-4 transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                Luồng Công Việc Nhanh Đầu Ngày (Teacher Fast Flow)
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                Tiết kiệm 80% thời gian
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Quy trình 3 bước chuẩn hóa giúp giáo viên hoàn tất việc đầu giờ chỉ trong 3 phút
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+              Tiến độ:
+            </span>
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full text-xs font-bold text-slate-800 dark:text-slate-200">
+              <span className="text-emerald-600 dark:text-emerald-400">{flowCompletedCount}</span>
+              <span>/</span>
+              <span>3 bước</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 Step Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {/* Step 1: Attendance */}
+          <div className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+            isAttendanceDone
+              ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700/60'
+              : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 hover:border-emerald-300'
+          }`}>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                  Bước 1 · Điểm danh
+                </span>
+                {isAttendanceDone ? (
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    Đã hoàn thành
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950">
+                    Cần thực hiện
+                  </span>
+                )}
+              </div>
+              <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                Kiểm diện học sinh hôm nay
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                {isAttendanceDone
+                  ? `Đã ghi nhận ${todayAttendance.present}/${students.length} em có mặt (${todayAttendance.excused + todayAttendance.unexcused} vắng).`
+                  : 'Điểm danh 1 chạm có mặt tất cả, chỉ sửa các em vắng hoặc đến muộn.'}
+              </p>
+            </div>
+
+            <div className="pt-3 mt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => setActiveTab('attendance')}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  isAttendanceDone
+                    ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                }`}
+              >
+                <span>{isAttendanceDone ? 'Xem lại điểm danh' : 'Điểm danh ngay (1 chạm)'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Step 2: Parent Communication / Absence Notification */}
+          <div className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+            isNotificationDone
+              ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700/60'
+              : absentCount > 0
+              ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700/60'
+              : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800'
+          }`}>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                  Bước 2 · Liên lạc PH
+                </span>
+                {isNotificationDone ? (
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    Không có em vắng
+                  </span>
+                ) : absentCount > 0 ? (
+                  <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950">
+                    Có {absentCount} em vắng
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-slate-400">
+                    Chờ điểm danh
+                  </span>
+                )}
+              </div>
+              <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                Thông báo phụ huynh học sinh
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                {absentCount > 0
+                  ? `Có ${absentCount} học sinh vắng sáng nay. Nhắn tin Zalo hoặc gọi phụ huynh xác nhận lý do.`
+                  : 'Sĩ số đủ 100%. Phụ huynh yên tâm, không cần gửi thông báo khẩn.'}
+              </p>
+            </div>
+
+            <div className="pt-3 mt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => {
+                  if (absentCount > 0) {
+                    setAttFilter('unexcused_absence');
+                    setDrillDown({ type: 'attendance_today' });
+                  } else {
+                    setActiveTab('parents');
+                  }
+                }}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  absentCount > 0
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>{absentCount > 0 ? `Xem ${absentCount} em vắng & Gửi Zalo` : 'Mở danh bạ Phụ huynh'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Step 3: Teaching Schedule Check */}
+          <div className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+            isScheduleReady
+              ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700/60'
+              : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800'
+          }`}>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                  Bước 3 · Giảng dạy
+                </span>
+                {isScheduleReady ? (
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    Đã sẵn sàng ({todaySchedules.length} tiết)
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-slate-400">Chưa có lịch</span>
+                )}
+              </div>
+              <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                Kế hoạch bài dạy hôm nay
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                {currentPeriod
+                  ? `Đang dạy Tiết ${currentPeriod.periodNumber}: ${currentPeriod.subjectName} (${currentPeriod.startTime}–${currentPeriod.endTime}).`
+                  : nextPeriod
+                  ? `Tiết sắp tới: Tiết ${nextPeriod.periodNumber}: ${nextPeriod.subjectName} (${nextPeriod.startTime}–${nextPeriod.endTime}).`
+                  : todaySchedules.length > 0
+                  ? `Hôm nay Thầy/Cô có ${todaySchedules.length} tiết dạy theo thời khóa biểu.`
+                  : 'Chưa xếp lịch dạy hôm nay. Thầy/Cô có thể sinh lịch nhanh từ thời khóa biểu.'}
+              </p>
+            </div>
+
+            <div className="pt-3 mt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => setActiveTab('teaching-schedule')}
+                className="w-full py-2 px-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Mở Lịch dạy & Kế hoạch bài</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Widget Strip: Lịch dạy hôm nay & Theo dõi học tập */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Lịch dạy hôm nay (2 spans) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-xs sm:text-sm">
+                  Lịch dạy hôm nay ({todaySchedules.length} tiết)
+                </h3>
+                <p className="text-[10px] text-slate-400">
+                  {format(new Date(), 'EEEE, dd/MM/yyyy', { locale: vi })}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('teaching-schedule')}
+              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span>Xem lịch đầy đủ</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {todaySchedules.length === 0 ? (
+            <div className="py-4 text-center text-xs text-slate-400 space-y-1">
+              <p>Hôm nay chưa có tiết dạy nào được xếp vào lịch.</p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('teaching-schedule')}
+                className="text-emerald-700 font-bold hover:underline"
+              >
+                + Thêm tiết hoặc sinh lịch từ thời khóa biểu
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* Highlight current or next period */}
+              {currentPeriod && (
+                <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-300 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white uppercase tracking-wider animate-pulse">
+                      Đang dạy
+                    </span>
+                    <span className="font-bold text-xs text-slate-900">
+                      Tiết {currentPeriod.periodNumber}: {currentPeriod.subjectName}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      ({currentPeriod.startTime}–{currentPeriod.endTime})
+                    </span>
+                    {currentPeriod.lessonTitle && (
+                      <span className="text-xs text-emerald-950 font-semibold truncate max-w-xs">
+                        · {currentPeriod.lessonTitle}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('teaching-schedule')}
+                    className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Mở tiết dạy
+                  </button>
+                </div>
+              )}
+
+              {!currentPeriod && nextPeriod && (
+                <div className="p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-200 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white uppercase tracking-wider">
+                      Tiết tiếp theo
+                    </span>
+                    <span className="font-bold text-slate-900 truncate">
+                      Tiết {nextPeriod.periodNumber}: {nextPeriod.subjectName}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      ({nextPeriod.startTime}–{nextPeriod.endTime})
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-indigo-700 shrink-0">
+                    {nextPeriod.room || 'Phòng học'}
+                  </span>
+                </div>
+              )}
+
+              {/* Timeline Cards: Tiết, giờ, môn, bài, trạng thái */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                {todaySchedules.map((entry) => {
+                  const isCurrent = currentTimeStr >= entry.startTime && currentTimeStr <= entry.endTime;
+                  const isNext = !currentPeriod && nextPeriod?.id === entry.id;
+
+                  return (
+                    <div
+                      key={entry.id}
+                      onClick={() => setDashboardScheduleDetail(entry)}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all hover:shadow-2xs group ${
+                        entry.status === 'completed'
+                          ? 'bg-emerald-50/50 border-emerald-200/80 text-emerald-950'
+                          : entry.status === 'cancelled'
+                          ? 'bg-rose-50/50 border-rose-200/80 text-rose-950 opacity-70'
+                          : isCurrent
+                          ? 'bg-emerald-50/90 border-emerald-400 ring-1 ring-emerald-300 shadow-2xs'
+                          : isNext
+                          ? 'bg-indigo-50/60 border-indigo-200'
+                          : 'bg-white border-slate-200/80 hover:border-emerald-300 text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 font-mono">
+                        <span>{entry.startTime}–{entry.endTime}</span>
+                        {entry.status === 'completed' ? (
+                          <span className="text-emerald-700 font-bold">Đã dạy</span>
+                        ) : entry.status === 'cancelled' ? (
+                          <span className="text-rose-700 font-bold">Đã hủy</span>
+                        ) : isCurrent ? (
+                          <span className="text-emerald-800 font-black flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping inline-block" />
+                            Đang dạy
+                          </span>
+                        ) : isNext ? (
+                          <span className="text-indigo-700 font-bold">Tiết kế</span>
+                        ) : (
+                          <span className="text-slate-400">Sắp tới</span>
+                        )}
+                      </div>
+
+                      <div className="text-xs font-bold text-slate-900 mt-1 truncate">
+                        Tiết {entry.periodNumber}: {entry.subjectName}
+                        {entry.lessonTitle && (
+                          <span className="font-normal text-slate-600 ml-1">· {entry.lessonTitle}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Nhật ký học tập cần theo dõi hôm nay (1 span) */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-xs sm:text-sm">
+                    Theo dõi học sinh hôm nay
+                  </h3>
+                  <p className="text-[10px] text-slate-400">Kế hoạch hỗ trợ sư phạm</p>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
+                {todayFollowUps.length} em
+              </span>
+            </div>
+
+            {todayFollowUps.length === 0 ? (
+              <p className="py-4 text-center text-xs text-slate-400 italic">
+                Không có lịch theo dõi đặc biệt nào cần xử lý hôm nay.
+              </p>
+            ) : (
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {todayFollowUps.map((f) => {
+                  const st = studentMap.get(f.studentId);
+                  return (
+                    <div
+                      key={f.id}
+                      onClick={() => setActiveTab('learning-journal')}
+                      className="p-2 rounded-xl bg-purple-50/50 border border-purple-100 text-xs hover:border-purple-300 transition-colors cursor-pointer space-y-0.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-purple-950 truncate">
+                          {st?.fullName || 'Học sinh'}
+                        </span>
+                        <span className="text-[10px] text-purple-700 font-semibold">{f.subject}</span>
+                      </div>
+                      {f.supportAction && (
+                        <p className="text-[10px] text-slate-600 line-clamp-1">
+                          Hỗ trợ: {f.supportAction}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('learning-journal')}
+            className="w-full py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
+          >
+            Mở sổ nhật ký học tập
+          </button>
+        </div>
+      </div>
+
+      {/* Phân tích Xu hướng Học tập & Tiến bộ Tuần (Recharts) */}
+      <LearningTrendAnalysis />
 
       {/* Main Grid: 2 Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 spans): Attendance trend & Tasks */}
         <div className="lg:col-span-2 space-y-6">
           {/* 7-Day Attendance Trend */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 stroke-[2]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Chuyên cần 7 ngày qua</h3>
-                  <p className="text-[11px] text-slate-400">
-                    {avgAttendancePct !== null
-                      ? `Tỷ lệ chuyên cần trung bình: ${avgAttendancePct}%`
-                      : 'Chưa có đủ dữ liệu chuyên cần tuần này'}
+                  <h3 className="text-sm font-bold text-slate-900">Chuyên cần 7 ngày</h3>
+                  <p className="text-[11px] text-slate-500">
+                    {avgAttendancePct !== null ? `Trung bình: ${avgAttendancePct}% có mặt` : 'Chưa có dữ liệu'}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setActiveTab('attendance')}
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5 cursor-pointer"
               >
-                <span>Xem sổ điểm danh</span>
+                <span>Sổ điểm danh</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-7 gap-2.5 sm:gap-4 items-end pt-5 pb-1">
+            <div className="grid grid-cols-7 gap-2 sm:gap-3 items-end pt-3 pb-1">
               {weekAttendanceTrend.map((day, idx) => {
                 const isSelected = day.isToday;
                 return (
@@ -446,17 +833,17 @@ export const DashboardView: React.FC = () => {
                         label: day.label,
                       })
                     }
-                    className="flex flex-col items-center gap-2 group cursor-pointer"
-                    title={`Bấm để xem danh sách chuyên cần ngày ${day.dayName} (${day.label})`}
+                    className="flex flex-col items-center gap-1.5 group cursor-pointer"
+                    title={`Ngày ${day.dayName} (${day.label})`}
                   >
-                    <div className="text-[11px] font-bold text-slate-700 tabular-nums group-hover:text-emerald-700 transition-colors">
+                    <div className="text-[10px] font-bold text-slate-600 tabular-nums group-hover:text-emerald-700 transition-colors">
                       {day.presentPct !== null ? `${day.presentPct}%` : '—'}
                     </div>
-                    <div className="w-full bg-slate-100/90 group-hover:bg-emerald-50 rounded-xl h-32 relative flex items-end justify-center overflow-hidden p-0.5 transition-colors">
+                    <div className="w-full bg-slate-100/90 group-hover:bg-emerald-50 rounded-lg h-24 relative flex items-end justify-center overflow-hidden p-0.5 transition-colors">
                       {day.presentPct !== null ? (
                         <div
                           style={{ height: `${Math.max(day.presentPct, 8)}%` }}
-                          className={`w-full transition-all duration-500 rounded-lg ${
+                          className={`w-full transition-all duration-500 rounded-md ${
                             day.presentPct >= 95
                               ? 'bg-gradient-to-t from-emerald-600 to-teal-500'
                               : day.presentPct >= 85
@@ -469,10 +856,10 @@ export const DashboardView: React.FC = () => {
                       )}
                     </div>
                     <div className="text-center leading-tight">
-                      <span className={`block text-[11px] font-bold ${isSelected ? 'text-emerald-800' : 'text-slate-700'} group-hover:text-emerald-700 transition-colors`}>
+                      <span className={`block text-[10px] font-bold ${isSelected ? 'text-emerald-800' : 'text-slate-600'} group-hover:text-emerald-700 transition-colors`}>
                         {day.dayName}
                       </span>
-                      <span className="block text-[10px] text-slate-400">{day.label}</span>
+                      <span className="block text-[9px] text-slate-400">{day.label}</span>
                     </div>
                   </div>
                 );
@@ -481,20 +868,20 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Urgent Tasks */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
                   <ListTodo className="w-4 h-4 stroke-[2]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Nhiệm vụ & Bài tập cần hoàn thành</h3>
-                  <p className="text-[11px] text-slate-400">Theo dõi tiến độ hoàn thành bài tập của học sinh</p>
+                  <h3 className="text-sm font-bold text-slate-900">Nhiệm vụ & Bài tập</h3>
+                  <p className="text-[11px] text-slate-500">Tiến độ hoàn thành bài tập của học sinh</p>
                 </div>
               </div>
               <button
                 onClick={() => setActiveTab('tasks')}
-                className="text-xs font-bold text-indigo-700 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-indigo-700 hover:text-indigo-800 flex items-center gap-0.5 cursor-pointer"
               >
                 <span>Tất cả ({tasks.length})</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -680,9 +1067,9 @@ export const DashboardView: React.FC = () => {
       {/* Drill-Down Inspection Modal (Full Traceability & Root Cause Inspection) */}
       {drillDown && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[90vh] flex flex-col transition-colors">
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3 shrink-0">
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
               <div>
                 <div className="flex items-center gap-2">
                   {drillDown.type === 'students_summary' && (
@@ -701,7 +1088,7 @@ export const DashboardView: React.FC = () => {
                     <Trophy className="w-5 h-5 text-amber-600" />
                   )}
 
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
                     {drillDown.type === 'students_summary' && `Hồ sơ sĩ số Lớp ${activeClass?.className || ''} (${students.length} em)`}
                     {drillDown.type === 'attendance_today' && `Kiểm diện chuyên cần hôm nay (${todayStr})`}
                     {drillDown.type === 'attendance_date' && `Sổ điểm danh ngày ${drillDown.dayName} (${drillDown.label})`}
@@ -711,7 +1098,7 @@ export const DashboardView: React.FC = () => {
                     {drillDown.type === 'competition_group' && `Nhật ký cộng/trừ điểm: ${drillDown.groupName} (${drillDown.score} điểm)`}
                   </h3>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Truy ngược số liệu gốc · Minh chứng xác thực thời gian thực
                 </p>
               </div>
@@ -719,7 +1106,7 @@ export const DashboardView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDrillDown(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1343,6 +1730,134 @@ export const DashboardView: React.FC = () => {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: DASHBOARD SCHEDULE ENTRY DETAIL */}
+      {dashboardScheduleDetail && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-in fade-in zoom-in-95 duration-150 transition-colors">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                  Chi tiết tiết dạy hôm nay
+                </span>
+                <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                  Tiết {dashboardScheduleDetail.periodNumber}: {dashboardScheduleDetail.subjectName}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDashboardScheduleDetail(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+              <div className="flex items-center justify-between py-1 border-b border-slate-50 dark:border-slate-800/80">
+                <span className="text-slate-500 dark:text-slate-400">Thời gian:</span>
+                <span className="font-bold font-mono text-slate-900 dark:text-slate-100">
+                  {dashboardScheduleDetail.startTime} – {dashboardScheduleDetail.endTime}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-slate-50 dark:border-slate-800/80">
+                <span className="text-slate-500 dark:text-slate-400">Lớp:</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{activeClass?.className || '3A1'}</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-slate-50 dark:border-slate-800/80">
+                <span className="text-slate-500 dark:text-slate-400">Tên bài học:</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
+                  {dashboardScheduleDetail.lessonTitle || 'Chưa ghi tên bài'}
+                </span>
+              </div>
+              {dashboardScheduleDetail.room && (
+                <div className="flex items-center justify-between py-1 border-b border-slate-50 dark:border-slate-800/80">
+                  <span className="text-slate-500 dark:text-slate-400">Phòng học:</span>
+                  <span className="text-slate-800 dark:text-slate-200">{dashboardScheduleDetail.room}</span>
+                </div>
+              )}
+              {dashboardScheduleDetail.preparationNote && (
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200">
+                  <span className="font-bold">Chuẩn bị bài: </span>
+                  {dashboardScheduleDetail.preparationNote}
+                </div>
+              )}
+              {dashboardScheduleDetail.note && (
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                  <span className="font-bold">Ghi chú: </span>
+                  {dashboardScheduleDetail.note}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              {dashboardScheduleDetail.status !== 'completed' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await completeTeachingScheduleEntry(dashboardScheduleDetail.id);
+                    showToast(`Đã ghi nhận hoàn thành tiết ${dashboardScheduleDetail.subjectName}!`, 'success');
+                    setDashboardScheduleDetail(null);
+                  }}
+                  className="flex items-center justify-center gap-1.5 p-2.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 rounded-xl font-bold text-xs border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Đã dạy xong</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const entry = dashboardScheduleDetail;
+                  setLearningJournalPrefill({
+                    scheduleEntryId: entry.id,
+                    subject: entry.subjectName,
+                    lessonTitle: entry.lessonTitle,
+                    date: entry.date,
+                  });
+                  setDashboardScheduleDetail(null);
+                  setActiveTab('learning-journal');
+                }}
+                className="flex items-center justify-center gap-1.5 p-2.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-300 rounded-xl font-bold text-xs border border-purple-200 dark:border-purple-800 transition-colors cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Ghi nhật ký học tập</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const entry = dashboardScheduleDetail;
+                  setTaskPrefill({
+                    title: `Bài tập / Nhiệm vụ: ${entry.lessonTitle || entry.subjectName}`,
+                    subject: entry.subjectName,
+                    dueDate: entry.date,
+                  });
+                  setDashboardScheduleDetail(null);
+                  setActiveTab('schedule');
+                }}
+                className="flex items-center justify-center gap-1.5 p-2.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 rounded-xl font-bold text-xs border border-teal-200 dark:border-teal-800 transition-colors cursor-pointer"
+              >
+                <ListTodo className="w-4 h-4" />
+                <span>Tạo nhiệm vụ</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDashboardScheduleDetail(null);
+                  setActiveTab('teaching-schedule');
+                }}
+                className="flex items-center justify-center gap-1.5 p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Mở lịch chi tiết</span>
+              </button>
             </div>
           </div>
         </div>

@@ -325,13 +325,14 @@ export interface TimetableDesignConfig {
 }
 
 export type DeskType = 'double' | 'triple' | 'single';
+export type ClassroomModel = 'traditional_3col' | 'traditional_4col' | 'hybrid_triple' | 'u_shape' | 'group_clusters' | 'single_exam' | 'custom';
 
 export interface SeatingLayoutConfig {
   id?: string;
   classId?: string;
   ownerId?: string;
   columns: number; // 2, 3, 4, 5
-  rows: number; // 3, 4, 5, 6, 7
+  rows: number; // 3, 4, 5, 6, 7, 8
   deskType: DeskType; // 'double' | 'triple' | 'single'
   teacherDeskPos: 'left' | 'center' | 'right';
   boardTitle?: string;
@@ -340,8 +341,18 @@ export interface SeatingLayoutConfig {
   showSpecialNotes: boolean; // eye/height/leader
   doorPos: 'left' | 'right';
   windowPos: 'left' | 'right';
+  backDoorPos?: 'left' | 'right' | 'none'; // Cửa sau lớp học
+  smartTvPos?: 'left' | 'right' | 'none'; // Màn hình Smart TV / Máy chiếu
+  libraryCornerPos?: 'left' | 'right' | 'none'; // Góc thư viện / Tủ sách thân thiện
+  honorCornerPos?: 'left' | 'right' | 'none'; // Bảng tin vinh danh / Góc hoa điểm 10
+  mottoText?: string; // Khẩu hiệu lớp học (Nét chữ nết người, Thi đua dạy tốt học tốt...)
   aisleWidth?: 'normal' | 'wide' | 'compact';
   themeStyle?: 'chalkboard' | 'modern_wood' | 'pastel_nordic' | 'clean_minimal';
+  columnLabels?: string[]; // Nhãn tên từng dãy: ['Dãy 1 (Tổ 1)', 'Dãy 2 (Tổ 2)', ...]
+  disabledSeats?: string[]; // Danh sách các vị trí bàn khuyết/bỏ trống không xếp chỗ
+  syncWithRoster?: boolean; // Tự động đồng bộ sức chứa với sĩ số học sinh
+  classroomModel?: ClassroomModel;
+  targetStudentCount?: number; // Sĩ số mục tiêu do giáo viên nhập
   updatedAt?: string;
 }
 
@@ -367,3 +378,79 @@ export interface NotificationItem {
   studentId?: string;
   taskId?: string;
 }
+
+// -------------------------------------------------------------
+// MODULE: LỊCH DẠY (TEACHING SCHEDULE)
+// -------------------------------------------------------------
+export type TeachingScheduleStatus = 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
+export type TeachingScheduleSource = 'manual' | 'recurring' | 'imported';
+
+export interface TeachingScheduleEntry {
+  id: string;
+  ownerId: string;
+  classId: string;
+  date: string; // YYYY-MM-DD
+  periodNumber?: number; // 1, 2, 3, 4, 5...
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  subjectId?: string;
+  subjectName: string;
+  lessonTitle?: string;
+  room?: string;
+  note?: string;
+  preparationNote?: string;
+  status: TeachingScheduleStatus;
+  source: TeachingScheduleSource;
+  recurringRuleId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeachingScheduleRule {
+  id: string;
+  ownerId: string;
+  classId: string;
+  dayOfWeek: number; // 1 = Monday, 2 = Tuesday, ..., 5 = Friday, 6 = Saturday, 0 = Sunday
+  periodNumber?: number;
+  startTime: string;
+  endTime: string;
+  subjectName: string;
+  lessonTitle?: string;
+  effectiveFrom: string; // YYYY-MM-DD
+  effectiveTo?: string; // YYYY-MM-DD
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// -------------------------------------------------------------
+// MODULE: NHẬT KÝ HỌC TẬP HỌC SINH (STUDENT LEARNING JOURNAL)
+// -------------------------------------------------------------
+export type StudentLearningJournalType =
+  | 'observation'
+  | 'progress'
+  | 'difficulty'
+  | 'achievement'
+  | 'follow_up'
+  | 'general';
+
+export interface StudentLearningJournalEntry {
+  id: string;
+  ownerId: string;
+  classId: string;
+  studentId: string;
+  scheduleEntryId?: string;
+  date: string; // YYYY-MM-DD
+  subject?: string;
+  lessonTitle?: string;
+  type: StudentLearningJournalType;
+  observation: string;
+  evidence?: string;
+  supportAction?: string;
+  followUpDate?: string; // YYYY-MM-DD
+  tags?: string[];
+  privateToTeacher: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+

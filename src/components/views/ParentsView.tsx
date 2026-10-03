@@ -28,7 +28,7 @@ export const ParentsView: React.FC = () => {
     currentUser,
     students,
     parents,
-    refreshActiveData,
+    refreshParents,
     showToast,
   } = useApp();
 
@@ -128,7 +128,7 @@ export const ParentsView: React.FC = () => {
         primary: true,
       });
 
-      await refreshActiveData();
+      await refreshParents();
       setShowContactModal(false);
       showToast('Đã lưu thông tin liên hệ phụ huynh!');
     } catch (err: any) {
@@ -139,7 +139,7 @@ export const ParentsView: React.FC = () => {
   const handleDeleteContact = async (id: string) => {
     try {
       await ParentRepository.deleteContact(id);
-      await refreshActiveData();
+      await refreshParents();
       showToast('Đã xóa thông tin liên hệ');
     } catch (err: any) {
       showToast('Lỗi khi xóa: ' + (err.message || ''), 'error');

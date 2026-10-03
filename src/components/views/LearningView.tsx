@@ -39,9 +39,10 @@ export const LearningView: React.FC = () => {
     currentUser,
     students,
     assessments,
-    refreshActiveData,
+    refreshAssessments,
     showToast,
     setActiveTab,
+    setLearningJournalPrefill,
   } = useApp();
 
   const [selectedSubject, setSelectedSubject] = useState<string>('Toán');
@@ -125,7 +126,7 @@ export const LearningView: React.FC = () => {
       }
 
       await LearningRepository.saveAssessmentBatch(activeClass.id, currentUser.uid, batchList);
-      await refreshActiveData();
+      await refreshAssessments();
       showToast(`Đã lưu kết quả đánh giá môn ${selectedSubject}!`);
     } catch (err: any) {
       showToast('Lỗi khi lưu đánh giá: ' + (err.message || ''), 'error');
@@ -164,7 +165,23 @@ export const LearningView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              setLearningJournalPrefill({
+                subject: selectedSubject,
+                date: assessmentDate,
+              });
+              setActiveTab('learning-journal');
+            }}
+            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-xl border border-purple-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+            title="Chuyển sang ghi nhận xét, quan sát khó khăn hoặc tiến bộ của học sinh"
+          >
+            <BookOpen className="w-4 h-4 text-purple-600" />
+            <span>Ghi nhật ký học tập</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('ai-comments')}
             className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl border border-indigo-200 transition-colors flex items-center gap-1.5 cursor-pointer"

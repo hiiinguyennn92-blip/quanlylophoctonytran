@@ -615,6 +615,22 @@ Yêu cầu xuất ra JSON cấu trúc:
   }
 }
 
+export interface RoutedSkillInfo {
+  id: 'image_design' | 'circular_27' | 'early_warning' | 'classroom_dynamics' | 'lesson_schedule' | 'parent_bridge' | 'general';
+  name: string;
+  badge: string;
+  modelUsed: string;
+}
+
+export interface ImagePromptBlueprint {
+  subject: string;
+  aspectRatio: string;
+  stylePreset: string;
+  masterPrompt8Block: string;
+  exactVietnameseText: string[];
+  negativeConstraints: string[];
+}
+
 export interface AIAssistantRequest {
   userQuery: string;
   contextData: {
@@ -631,7 +647,142 @@ export interface AIAssistantRequest {
   }>;
 }
 
-export async function askAIAssistant(params: AIAssistantRequest): Promise<{ reply: string; followUps: string[] }> {
+export interface AIAssistantResponse {
+  reply: string;
+  followUps: string[];
+  routedSkill?: RoutedSkillInfo;
+  imagePromptBlueprint?: ImagePromptBlueprint;
+}
+
+export function detectAgentSkillRoute(query: string): RoutedSkillInfo {
+  const q = query.toLowerCase();
+
+  // 1. Image Design Skill (Tạo ảnh, vẽ tranh, poster, giấy khen, infographic...)
+  if (
+    q.includes('ảnh') ||
+    q.includes('hình') ||
+    q.includes('vẽ') ||
+    q.includes('poster') ||
+    q.includes('thiết kế') ||
+    q.includes('infographic') ||
+    q.includes('giấy khen') ||
+    q.includes('banner') ||
+    q.includes('truyện tranh') ||
+    q.includes('scrapbook') ||
+    q.includes('flashcard') ||
+    q.includes('prompt') ||
+    q.includes('bức tranh')
+  ) {
+    return {
+      id: 'image_design',
+      name: 'Nhà Thiết Kế Hình Ảnh Học Đường AI',
+      badge: 'Google Nano Banana 2 (gemini-3.1-flash-image)',
+      modelUsed: 'gemini-3.1-flash-image',
+    };
+  }
+
+  // 2. Circular 27 Evaluation Skill (Nhận xét học bạ, đánh giá phẩm chất, năng lực...)
+  if (
+    q.includes('nhận xét') ||
+    q.includes('học bạ') ||
+    q.includes('thông tư 27') ||
+    q.includes('tt27') ||
+    q.includes('năng lực') ||
+    q.includes('phẩm chất') ||
+    q.includes('đánh giá') ||
+    q.includes('xếp loại') ||
+    q.includes('can-need-action')
+  ) {
+    return {
+      id: 'circular_27',
+      name: 'Đánh Giá Khung Năng Lực TT27',
+      badge: 'Skill Sư Phạm Chuẩn BGD',
+      modelUsed: 'gemini-3.8-flash',
+    };
+  }
+
+  // 3. Early Warning & Attendance Skill
+  if (
+    q.includes('vắng') ||
+    q.includes('nghỉ') ||
+    q.includes('điểm danh') ||
+    q.includes('chuyên cần') ||
+    q.includes('can thiệp') ||
+    q.includes('nguy cơ') ||
+    q.includes('chú ý') ||
+    q.includes('tín hiệu')
+  ) {
+    return {
+      id: 'early_warning',
+      name: 'Can Thiệp Sớm & Chuyên Cần',
+      badge: 'Skill An Toàn & Bảo Vệ Trẻ',
+      modelUsed: 'gemini-3.8-flash',
+    };
+  }
+
+  // 4. Classroom Dynamics & Seating
+  if (
+    q.includes('chỗ ngồi') ||
+    q.includes('sơ đồ') ||
+    q.includes('bàn ghế') ||
+    q.includes('cận thị') ||
+    q.includes('thấp bé') ||
+    q.includes('ghép đôi') ||
+    q.includes('cùng tiến')
+  ) {
+    return {
+      id: 'classroom_dynamics',
+      name: 'Tối Ưu Sơ Đồ & Thị Lực',
+      badge: 'Skill Bố Trí Không Gian',
+      modelUsed: 'gemini-3.8-flash',
+    };
+  }
+
+  // 5. Lesson & Schedule Planning
+  if (
+    q.includes('sinh hoạt') ||
+    q.includes('kế hoạch') ||
+    q.includes('báo giảng') ||
+    q.includes('thời khóa biểu') ||
+    q.includes('tiết học') ||
+    q.includes('trò chơi') ||
+    q.includes('hoạt động')
+  ) {
+    return {
+      id: 'lesson_schedule',
+      name: 'Kế Hoạch Sinh Hoạt & Báo Giảng',
+      badge: 'Skill Điều Phối Học Đường',
+      modelUsed: 'gemini-3.8-flash',
+    };
+  }
+
+  // 6. Parent Bridge & Zalo
+  if (
+    q.includes('phụ huynh') ||
+    q.includes('zalo') ||
+    q.includes('tin nhắn') ||
+    q.includes('thông báo') ||
+    q.includes('gọi điện') ||
+    q.includes('sổ liên lạc')
+  ) {
+    return {
+      id: 'parent_bridge',
+      name: 'Cầu Nối Phụ Huynh & Zalo',
+      badge: 'Skill Ứng Xử Sư Phạm',
+      modelUsed: 'gemini-3.8-flash',
+    };
+  }
+
+  // Default General Assistant
+  return {
+    id: 'general',
+    name: 'Trợ Lý Chủ Nhiệm Toàn Diện',
+    badge: 'Multi-Agent Router (GDPT 2018)',
+    modelUsed: 'gemini-3.8-flash',
+  };
+}
+
+export async function askAIAssistant(params: AIAssistantRequest): Promise<AIAssistantResponse> {
   const query = sanitizeUntrusted(params?.userQuery || 'Xin chào');
   const ctx = params?.contextData || {};
   const className = sanitizeUntrusted(ctx.className || 'Chưa chọn');
@@ -640,6 +791,8 @@ export async function askAIAssistant(params: AIAssistantRequest): Promise<{ repl
   const tasksSummary = sanitizeUntrusted(ctx.tasksSummary || 'Không có nhiệm vụ gần');
   const selectedStudent = ctx.selectedStudent ? JSON.stringify(ctx.selectedStudent) : 'Toàn lớp';
   const relevantRecords = sanitizeUntrusted(ctx.relevantRecords || 'Không');
+
+  const routedSkill = detectAgentSkillRoute(query);
 
   const rawHistory = Array.isArray(params?.conversationHistory) ? params.conversationHistory : [];
   const recentHistory = rawHistory
@@ -661,6 +814,11 @@ Yêu cầu mới nhất của giáo viên chủ nhiệm:
 "${query}"
 </untrusted_user_input>
 
+PHÂN LUỒNG KỸ NĂNG ĐƯỢC CHỈ ĐỊNH:
+- Kỹ năng kích hoạt: ${routedSkill.name} (${routedSkill.id})
+- Mô hình chuyên dụng: ${routedSkill.modelUsed}
+- Huy hiệu: ${routedSkill.badge}
+
 Dữ liệu lớp học hiện có liên quan (ĐÃ XÁC THỰC TỪ HỆ THỐNG):
 - Lớp: ${className}
 - Sĩ số: ${studentCount} học sinh
@@ -669,16 +827,32 @@ Dữ liệu lớp học hiện có liên quan (ĐÃ XÁC THỰC TỪ HỆ THỐN
 - Học sinh đang chọn (nếu có): ${selectedStudent}
 - Ghi chú / Dữ liệu liên quan khác: ${relevantRecords}
 
-Yêu cầu:
-- Trả lời bằng giọng điệu trợ lý giáo dục chuyên nghiệp, nhiệt tình, thực tế, đúng chuẩn GDPT 2018.
-- Nếu giáo viên nhắc tới "bạn ấy", "em ấy", "nhiệm vụ đó", hãy đối chiếu với lịch sử trao đổi bên trên và dữ liệu hiện có để trả lời liền mạch.
-- Nếu câu hỏi hỏi về dữ liệu không có trong hệ thống (ví dụ: điểm môn chưa nhập, thông tin gia đình, tính cách em chưa ghi nhận), BẮT BUỘC trả lời rõ: "Dữ liệu hiện tại chưa có thông tin về [...] để có thể trả lời chính xác, Thầy/Cô có thể bổ sung trong mục tương ứng."
-- TUYỆT ĐỐI KHÔNG chẩn đoán các hội chứng y khoa, tâm thần hay rối loạn phát triển (ADHD, tự kỷ...).
-- Định dạng JSON:
+ĐẶC BIỆT KHI PHÂN LUỒNG LÀ "image_design" (Nhà Thiết Kế Hình Ảnh Học Đường AI):
+- Bạn đóng vai Master Visual Designer trường học Việt Nam.
+- Bắt buộc phải cung cấp một "imagePromptBlueprint" theo đúng CẤU TRÚC 8 KHỐI CHUẨN MỰC (8-BLOCK ARCHITECTURE) của Google Nano Banana (gemini-3.1-flash-image):
+  [BLOCK 1: HỆ ĐIỀU HÀNH & MỤC TIÊU (SYSTEM TARGET & DIRECTIVE)]
+  [BLOCK 2: CHỦ THỂ & BẢN SẮC VĂN HÓA TIỂU HỌC VIỆT NAM (SUBJECT & CULTURAL CONTEXT)]
+  [BLOCK 3: PHONG CÁCH NGHỆ THUẬT & CHẤT LIỆU (ARTISTIC STYLE & MEDIUM)]
+  [BLOCK 4: BỐ CỤC, THỨ TỰ QUAN SÁT & VÙNG AN TOÀN CHỮ (COMPOSITION, READING ORDER & NEGATIVE SPACE)]
+  [BLOCK 5: ÁNH SÁNG & BẢNG MÀU SƯ PHẠM (LIGHTING & COLOR HARMONY)]
+  [BLOCK 6: QUY CHUẨN KHÓA CHỮ TIẾNG VIỆT CÓ DẤU (EXACT VIETNAMESE TYPOGRAPHY)]
+  [BLOCK 7: BỘ LỌC CẤM & GIỚI HẠN AN TOÀN (NEGATIVE CONSTRAINTS & SANITIZER)]
+  [BLOCK 8: ĐỘ PHÂN GIẢI & TIÊU CHUẨN XUẤT BẢN (RESOLUTION & PRODUCTION FIDELITY)]
+
+Yêu cầu định dạng JSON phản hồi:
 {
-  "reply": "Nội dung câu trả lời chi tiết, có phân dòng dễ đọc",
-  "followUps": ["Câu hỏi gợi ý 1", "Câu hỏi gợi ý 2"]
+  "reply": "Nội dung câu trả lời chi tiết sư phạm, phân dòng mạch lạc, có phân tích phương hướng xử lý",
+  "followUps": ["Câu hỏi gợi ý tiếp theo 1", "Câu hỏi gợi ý 2"],
+  "imagePromptBlueprint": {
+    "subject": "Tên chủ đề ngắn gọn",
+    "aspectRatio": "16:9 hoặc 3:4 hoặc 1:1 hoặc 4:3",
+    "stylePreset": "clean_flat_vector hoặc educational_infographic hoặc 3d_pixar_clay",
+    "masterPrompt8Block": "Toàn văn prompt 8 khối chuẩn mực sẵn sàng dùng cho mô hình sinh ảnh Nano Banana / Gemini Image",
+    "exactVietnameseText": ["Chữ hiển thị 1", "Chữ hiển thị 2"],
+    "negativeConstraints": ["watermark", "lorem ipsum", "dị tật tay ngón"]
+  }
 }
+(Nếu không phải yêu cầu tạo ảnh, có thể để trường imagePromptBlueprint là null).
 `;
 
   try {
@@ -693,14 +867,24 @@ Yêu cầu:
 
     const parsed = safeParseJson<any>(response.text || '{}', {});
     return {
-      reply: parsed.reply || parsed.answer || parsed.response || response.text || 'Dạ, em đã nhận yêu cầu từ Thầy/Cô. Xin Thầy/Cô vui lòng cung cấp thêm thông tin để em hỗ trợ chu đáo nhất.',
+      reply: parsed.reply || parsed.answer || parsed.response || response.text || 'Dạ, em đã nhận yêu cầu từ Thầy/Cô.',
       followUps: Array.isArray(parsed.followUps) ? parsed.followUps : ['Xem báo cáo chuyên cần', 'Tạo gợi ý nhận xét'],
+      routedSkill,
+      imagePromptBlueprint: parsed.imagePromptBlueprint || (routedSkill.id === 'image_design' ? {
+        subject: query,
+        aspectRatio: '16:9',
+        stylePreset: 'clean_flat_vector',
+        masterPrompt8Block: `[BLOCK 1: HỆ ĐIỀU HÀNH & MỤC TIÊU]\n• Target: Google Nano Banana 2 (gemini-3.1-flash-image)\n• Role: Master Educational Visual Designer\n\n[BLOCK 2: CHỦ THỂ & VĂN HÓA VIỆT NAM]\n• Chủ thể: Học sinh tiểu học Việt Nam trong đồng phục trắng, khăn quàng đỏ.\n• Bối cảnh: Sân trường thân thiện, ấm áp.\n\n[BLOCK 3: PHONG CÁCH]\n• Flat Vector Illustration, nét vẽ sắc nét.\n\n[BLOCK 4: BỐ CỤC & VÙNG AN TOÀN]\n• Tỷ lệ: 16:9, chừa 20% khoảng thở trên tiêu đề.\n\n[BLOCK 5: ÁNH SÁNG & BẢNG MÀU]\n• Bảng màu: #059669, #0284c7, #f59e0b, nền ngà dịu mắt.\n\n[BLOCK 6: CHỮ TIẾNG VIỆT]\n• Khóa chữ có dấu đầy đủ trong ngoặc kép.\n\n[BLOCK 7: BỘ LỌC CẤM]\n• Không watermark, không dị tật ngón tay, không xe bus vàng kiểu Mỹ.\n\n[BLOCK 8: ĐỘ PHÂN GIẢI]\n• 4K vector high clarity.`,
+        exactVietnameseText: ['HỌC ĐƯỜNG THÂN THIỆN'],
+        negativeConstraints: ['watermark', 'dị tật ngón tay', 'lorem ipsum'],
+      } : undefined),
     };
   } catch (error) {
     console.error('Error in AI Assistant:', error);
     return {
       reply: 'Hệ thống AI trợ lý đang bận xử lý hoặc kết nối chưa ổn định. Thầy/Cô vẫn có thể sử dụng đầy đủ các công cụ quản lý lớp, điểm danh, hồ sơ và báo cáo ở các mục bên cạnh.',
       followUps: ['Kiểm tra danh sách học sinh', 'Xem bảng điểm danh hôm nay'],
+      routedSkill,
     };
   }
 }

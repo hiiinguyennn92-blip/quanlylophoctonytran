@@ -5,6 +5,7 @@ import { StudentRepository, ParentRepository } from '../../repositories/dataRepo
 import { ImportExportService, ParsedStudentRow } from '../../services/importExportService';
 import {
   UserPlus,
+  Plus,
   FileSpreadsheet,
   Download,
   Upload,
@@ -36,6 +37,7 @@ import {
   Music,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { AIClientService } from '../../services/aiClientService';
 import { SendZaloModal } from '../common/SendZaloModal';
 import { EmptyState } from '../common/EmptyState';
 import {
@@ -62,6 +64,8 @@ export const StudentsView: React.FC = () => {
     competitionEntries,
     journalEntries,
     refreshActiveData,
+    refreshStudents,
+    refreshParents,
     showToast,
     setActiveTab,
     selectedStudentForDetail,
@@ -265,7 +269,8 @@ export const StudentsView: React.FC = () => {
         showToast(`Đã thêm học sinh ${fullName} vào danh sách!`);
       }
 
-      await refreshActiveData();
+      await refreshStudents();
+      await refreshParents();
       setShowAddModal(false);
     } catch (err: any) {
       showToast('Lỗi khi lưu học sinh: ' + (err.message || ''), 'error');
@@ -281,7 +286,8 @@ export const StudentsView: React.FC = () => {
       if (selectedStudentForDetail?.id === showDeleteConfirm.id) {
         setSelectedStudentForDetail(null);
       }
-      await refreshActiveData();
+      await refreshStudents();
+      await refreshParents();
     } catch (err: any) {
       showToast('Lỗi khi xóa học sinh: ' + (err.message || ''), 'error');
     }
@@ -372,7 +378,8 @@ export const StudentsView: React.FC = () => {
       setShowImportModal(false);
       setParsedRows([]);
       setImportStep('upload');
-      await refreshActiveData();
+      await refreshStudents();
+      await refreshParents();
     } catch (err: any) {
       showToast('Lỗi khi nhập danh sách: ' + (err.message || ''), 'error');
     } finally {
@@ -1383,9 +1390,23 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
   onEdit,
   onGoToAIComment,
 }) => {
-  const { attendanceRecords, assessments, competencies, competitionEntries, journalEntries } = useApp();
-  const [activeSubTab, setActiveSubTab] = useState<'info' | 'attendance' | 'learning' | 'competition' | 'journal'>('info');
+  const {
+    attendanceRecords,
+    assessments,
+    competencies,
+    competitionEntries,
+    journalEntries,
+    studentLearningJournals,
+    setActiveTab,
+    setLearningJournalPrefill,
+    showToast,
+  } = useApp();
+  const [activeSubTab, setActiveSubTab] = useState<
+    'info' | 'attendance' | 'learning' | 'competition' | 'journal' | 'learning-journal'
+  >('info');
   const [showZaloModal, setShowZaloModal] = useState(false);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [aiWeekSummary, setAiWeekSummary] = useState<string | null>(null);
 
   // Student specific data
   const studentAtt = attendanceRecords.filter((r) => r.studentId === student.id);
@@ -1393,6 +1414,7 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
   const studentComp = competencies.filter((c) => c.studentId === student.id);
   const studentEntries = competitionEntries.filter((e) => e.studentId === student.id);
   const studentJournals = journalEntries.filter((j) => j.studentId === student.id);
+  const thisStudentLearningJournals = studentLearningJournals.filter((j) => j.studentId === student.id);
 
   const presentCount = studentAtt.filter((r) => r.status === 'present').length;
   const excusedCount = studentAtt.filter((r) => r.status === 'excused_absence').length;
@@ -1400,10 +1422,10 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
   const lateCount = studentAtt.filter((r) => r.status === 'late').length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
-      <div className="w-full max-w-xl bg-white h-full shadow-2xl flex flex-col border-l border-slate-200">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
+      <div className="w-full max-w-xl bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 transition-colors">
         {/* Header */}
-        <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-start justify-between">
+        <div className="p-5 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div
               className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-black text-xl shadow-md border-2 border-emerald-500/30"
@@ -1413,27 +1435,27 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-bold text-slate-900">{student.fullName}</h3>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">{student.fullName}</h3>
                 {student.roleTitle && (
                   <ClassRoleBadge roleTitle={student.roleTitle} size="sm" />
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Mã: {student.studentCode || '---'} · {student.groupId} · Giới tính: {student.gender} · Tên: <strong className="text-emerald-700">{getVietnameseNameParts(student.fullName).givenName}</strong> ({getVietnameseInitial(student.fullName)})
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Mã: {student.studentCode || '---'} · {student.groupId} · Giới tính: {student.gender} · Tên: <strong className="text-emerald-700 dark:text-emerald-400">{getVietnameseNameParts(student.fullName).givenName}</strong> ({getVietnameseInitial(student.fullName)})
               </p>
             </div>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={onEdit}
-              className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-lg text-xs font-semibold"
+              className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold cursor-pointer"
               title="Chỉnh sửa"
             >
               <Edit className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1441,13 +1463,13 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
         </div>
 
         {/* Sub-tab navigation */}
-        <div className="flex items-center px-4 border-b border-slate-200 bg-white overflow-x-auto text-xs font-semibold">
+        <div className="flex items-center px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto text-xs font-semibold">
           <button
             onClick={() => setActiveSubTab('info')}
             className={`py-3 px-3 border-b-2 transition-colors shrink-0 ${
               activeSubTab === 'info'
-                ? 'border-emerald-600 text-emerald-800'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             Hồ sơ & Phụ huynh
@@ -1456,8 +1478,8 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
             onClick={() => setActiveSubTab('attendance')}
             className={`py-3 px-3 border-b-2 transition-colors shrink-0 ${
               activeSubTab === 'attendance'
-                ? 'border-emerald-600 text-emerald-800'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             Chuyên cần ({studentAtt.length})
@@ -1466,8 +1488,8 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
             onClick={() => setActiveSubTab('learning')}
             className={`py-3 px-3 border-b-2 transition-colors shrink-0 ${
               activeSubTab === 'learning'
-                ? 'border-emerald-600 text-emerald-800'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             Học tập ({studentAssess.length})
@@ -1476,8 +1498,8 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
             onClick={() => setActiveSubTab('competition')}
             className={`py-3 px-3 border-b-2 transition-colors shrink-0 ${
               activeSubTab === 'competition'
-                ? 'border-emerald-600 text-emerald-800'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             Thi đua ({studentEntries.length})
@@ -1486,11 +1508,22 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
             onClick={() => setActiveSubTab('journal')}
             className={`py-3 px-3 border-b-2 transition-colors shrink-0 ${
               activeSubTab === 'journal'
-                ? 'border-emerald-600 text-emerald-800'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            Nhật ký ({studentJournals.length})
+            Nhật ký lớp ({studentJournals.length})
+          </button>
+          <button
+            onClick={() => setActiveSubTab('learning-journal')}
+            className={`py-3 px-3 border-b-2 transition-colors shrink-0 flex items-center gap-1.5 ${
+              activeSubTab === 'learning-journal'
+                ? 'border-purple-600 text-purple-800 dark:text-purple-400 font-bold'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+            <span>Nhật ký học tập ({thisStudentLearningJournals.length})</span>
           </button>
         </div>
 
@@ -1500,24 +1533,24 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
             <div className="space-y-4">
               {/* Class Role Banner */}
               {student.roleTitle && (
-                <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/90 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-amber-100 text-amber-800 shrink-0">
+                <div className="bg-amber-50/70 dark:bg-amber-950/40 p-3.5 rounded-xl border border-amber-200/90 dark:border-amber-800/80 flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 shrink-0">
                     <Crown className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+                    <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
                       Ban cán sự lớp học
                     </div>
                     <div className="mt-1 flex items-center gap-2 flex-wrap">
                       <ClassRoleBadge roleTitle={student.roleTitle} size="md" />
-                      <span className="text-xs text-slate-600">
+                      <span className="text-xs text-slate-600 dark:text-slate-400">
                         {getClassRoleConfig(student.roleTitle)?.description || student.roleTitle}
                       </span>
                     </div>
                   </div>
                 </div>
               )}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <span className="text-slate-400">Ngày sinh:</span>
@@ -1707,6 +1740,137 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
                     {j.nextAction && (
                       <p className="text-[11px] text-emerald-700 font-medium">Kế hoạch: {j.nextAction}</p>
                     )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {activeSubTab === 'learning-journal' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2 p-3 bg-purple-50/60 rounded-xl border border-purple-200">
+                <div className="text-xs">
+                  <p className="font-bold text-purple-900">Diễn biến & Minh chứng học tập</p>
+                  <p className="text-[10px] text-purple-700">Tổng cộng {thisStudentLearningJournals.length} ghi nhận quan sát</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (thisStudentLearningJournals.length === 0) {
+                        showToast('Chưa có đủ nhật ký để tổng hợp tuần cho em này.', 'info');
+                        return;
+                      }
+                      setAiSummaryLoading(true);
+                      try {
+                        const entriesText = thisStudentLearningJournals
+                          .map((j) => `- Ngày ${j.date} (${j.subject || 'môn học'}): ${j.observation}${j.evidence ? ` [Minh chứng: ${j.evidence}]` : ''}${j.supportAction ? ` [Hỗ trợ: ${j.supportAction}]` : ''}`)
+                          .join('\n');
+                        const prompt = `Dưới đây là các ghi chép nhật ký học tập của học sinh ${student.fullName}:\n${entriesText}\n\nHãy tổng hợp thành báo cáo tiến bộ tuần ngắn gọn theo 3 ý: 1. Nét nổi bật & tiến bộ, 2. Điểm cần tiếp tục rèn luyện, 3. Đề xuất hỗ trợ tiếp theo. Văn phong sư phạm tiểu học chuẩn TT27.`;
+                        const res = await AIClientService.askAssistant({
+                          userQuery: prompt,
+                          contextData: {
+                            className: student.groupId,
+                            selectedStudent: { name: student.fullName, code: student.studentCode },
+                          },
+                        });
+                        setAiWeekSummary(res.reply);
+                        showToast('Đã tạo tổng hợp tiến bộ bằng AI!', 'success');
+                      } catch (err: any) {
+                        showToast('Lỗi tổng hợp: ' + (err.message || ''), 'error');
+                      } finally {
+                        setAiSummaryLoading(false);
+                      }
+                    }}
+                    disabled={aiSummaryLoading || thisStudentLearningJournals.length === 0}
+                    className="px-2.5 py-1.5 bg-white hover:bg-purple-100 text-purple-800 border border-purple-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                    <span>{aiSummaryLoading ? 'Đang tổng hợp...' : 'Tổng hợp tuần (AI)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLearningJournalPrefill({
+                        studentId: student.id,
+                        studentName: student.fullName,
+                      });
+                      onClose();
+                      setActiveTab('learning-journal');
+                    }}
+                    className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Ghi nhật ký</span>
+                  </button>
+                </div>
+              </div>
+
+              {aiWeekSummary && (
+                <div className="p-3 bg-white rounded-xl border border-purple-300 shadow-xs space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-purple-900 font-bold border-b border-purple-100 pb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      Tổng hợp tiến bộ học tập (Gợi ý từ AI)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAiWeekSummary(null)}
+                      className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="text-slate-800 leading-relaxed whitespace-pre-line text-xs font-medium">
+                    {aiWeekSummary}
+                  </div>
+                </div>
+              )}
+
+              {thisStudentLearningJournals.length === 0 ? (
+                <p className="py-6 text-center text-xs text-slate-400">
+                  Chưa có nhật ký học tập nào được ghi cho em này.
+                </p>
+              ) : (
+                thisStudentLearningJournals.map((j) => (
+                  <div
+                    key={j.id}
+                    className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 text-xs hover:border-purple-200 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-900">{j.subject || 'Môn học'}</span>
+                        {j.lessonTitle && <span className="text-slate-500">· {j.lessonTitle}</span>}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-slate-400">{j.date}</span>
+                        {j.privateToTeacher && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-bold">
+                            Riêng tư
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-slate-800 leading-relaxed font-medium">
+                        <span className="font-bold text-purple-900 mr-1">Quan sát:</span>
+                        {j.observation}
+                      </p>
+                      {j.evidence && (
+                        <p className="text-slate-600 pl-2 border-l-2 border-purple-300">
+                          <span className="font-bold">Minh chứng: </span>
+                          {j.evidence}
+                        </p>
+                      )}
+                      {j.supportAction && (
+                        <p className="text-emerald-800 bg-emerald-50/70 p-2 rounded-lg font-medium">
+                          <span className="font-bold">Hướng hỗ trợ: </span>
+                          {j.supportAction}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))
               )}

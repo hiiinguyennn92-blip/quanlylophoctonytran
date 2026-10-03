@@ -349,6 +349,79 @@
         "completedToday": { "type": "boolean" }
       },
       "required": ["classId", "ownerId", "time", "title"]
+    },
+    "TeachingScheduleEntry": {
+      "title": "TeachingScheduleEntry",
+      "description": "Individual scheduled teaching periods with preparation notes and execution status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "classId": { "type": "string" },
+        "date": { "type": "string" },
+        "periodNumber": { "type": "number" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "lessonTitle": { "type": "string" },
+        "room": { "type": "string" },
+        "note": { "type": "string" },
+        "preparationNote": { "type": "string" },
+        "status": { "type": "string" },
+        "source": { "type": "string" },
+        "recurringRuleId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["ownerId", "classId", "date", "startTime", "endTime", "subjectName", "status"]
+    },
+    "TeachingScheduleRule": {
+      "title": "TeachingScheduleRule",
+      "description": "Recurring schedule generation rule for a weekday and period",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "classId": { "type": "string" },
+        "dayOfWeek": { "type": "number" },
+        "periodNumber": { "type": "number" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "lessonTitle": { "type": "string" },
+        "effectiveFrom": { "type": "string" },
+        "effectiveTo": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["ownerId", "classId", "dayOfWeek", "startTime", "endTime", "subjectName", "effectiveFrom", "active"]
+    },
+    "StudentLearningJournalEntry": {
+      "title": "StudentLearningJournalEntry",
+      "description": "Teacher pedagogical observation, evidence, and support action journal per student",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "classId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "scheduleEntryId": { "type": "string" },
+        "date": { "type": "string" },
+        "subject": { "type": "string" },
+        "lessonTitle": { "type": "string" },
+        "type": { "type": "string" },
+        "observation": { "type": "string" },
+        "evidence": { "type": "string" },
+        "supportAction": { "type": "string" },
+        "followUpDate": { "type": "string" },
+        "tags": { "type": "array" },
+        "privateToTeacher": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["ownerId", "classId", "studentId", "date", "type", "observation", "privateToTeacher"]
     }
   },
   "firestore": {
@@ -427,6 +500,18 @@
     "/dailyRoutines/{routineId}": {
       "schema": "DailyRoutineStep",
       "description": "Teacher daily routines and checklist"
+    },
+    "/teachingScheduleEntries/{entryId}": {
+      "schema": "TeachingScheduleEntry",
+      "description": "Teaching schedule periods with status and lesson titles"
+    },
+    "/teachingScheduleRules/{ruleId}": {
+      "schema": "TeachingScheduleRule",
+      "description": "Recurring timetable schedule generator rules"
+    },
+    "/studentLearningJournals/{journalId}": {
+      "schema": "StudentLearningJournalEntry",
+      "description": "Student pedagogical learning journals with observation, evidence, and support action"
     }
   }
 }

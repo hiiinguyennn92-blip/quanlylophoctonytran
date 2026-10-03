@@ -176,7 +176,7 @@ const QUICK_DUTY_SUGGESTIONS = [
 ];
 
 export const TimetableView: React.FC = () => {
-  const { activeClass, currentUser, timetable, students, refreshActiveData, showToast } = useApp();
+  const { activeClass, currentUser, timetable, students, refreshTimetable, showToast } = useApp();
 
   // State
   const [grid, setGrid] = useState<Record<string, string>>({});
@@ -281,7 +281,7 @@ export const TimetableView: React.FC = () => {
       });
 
       await TimetableRepository.saveTimetable(activeClass.id, currentUser.uid, cells);
-      await refreshActiveData();
+      await refreshTimetable();
       showToast('Đã lưu thời khóa biểu lớp học thành công!');
     } catch (err: any) {
       showToast('Lỗi khi lưu TKB: ' + (err.message || ''), 'error');

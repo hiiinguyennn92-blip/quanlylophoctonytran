@@ -16,6 +16,7 @@ import {
   X,
   Mail,
   Crown,
+  Command,
 } from 'lucide-react';
 
 export interface AuthorAboutModalProps {
@@ -44,7 +45,7 @@ export const AuthorAboutModal: React.FC<AuthorAboutModalProps> = ({ isOpen, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Modal Header Banner */}
         <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 p-6 sm:p-7 text-white shrink-0">
           <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-emerald-500/20 blur-xl pointer-events-none" />
@@ -237,12 +238,38 @@ export const AuthorAboutModal: React.FC<AuthorAboutModalProps> = ({ isOpen, onCl
               </div>
             </div>
           </div>
+
+          {/* Keyboard Shortcuts Flow */}
+          <div className="space-y-2.5">
+            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 uppercase tracking-wider">
+              <Command className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Phím Tắt Tối Ưu Tốc Độ Thao Tác (Fast Keyboard Flow)</span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-300 font-medium">Tìm kiếm nhanh toàn năng</span>
+                <kbd className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-2xs">⌘K / Ctrl+K</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-300 font-medium">Đổi giao diện Sáng / Tối</span>
+                <kbd className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-2xs">Nút Moon / Sun</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-300 font-medium">Đóng cửa sổ / Hủy chọn</span>
+                <kbd className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-2xs">Esc</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-300 font-medium">In sơ đồ / Báo cáo A4</span>
+                <kbd className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-2xs">⌘P / Ctrl+P</kbd>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0">
-          <div className="flex items-center gap-2 text-slate-500 text-[11px]">
-            <Code2 className="w-4 h-4 text-emerald-600" />
+        <div className="p-4 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs shrink-0">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px]">
+            <Code2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Phát triển vì cộng đồng giáo dục Việt Nam</span>
           </div>
 
@@ -259,7 +286,7 @@ export const AuthorAboutModal: React.FC<AuthorAboutModalProps> = ({ isOpen, onCl
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors cursor-pointer"
             >
               Đóng
             </button>

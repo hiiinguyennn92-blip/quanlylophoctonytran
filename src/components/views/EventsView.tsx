@@ -17,7 +17,7 @@ import { format, parseISO, isAfter, isBefore } from 'date-fns';
 import { EmptyState } from '../common/EmptyState';
 
 export const EventsView: React.FC = () => {
-  const { activeClass, currentUser, classEvents, refreshActiveData, showToast } = useApp();
+  const { activeClass, currentUser, classEvents, refreshEvents, showToast } = useApp();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [title, setTitle] = useState('');
@@ -51,7 +51,7 @@ export const EventsView: React.FC = () => {
         reminderDaysBefore: Number(reminderDaysBefore) || 1,
       });
 
-      await refreshActiveData();
+      await refreshEvents();
       setShowAddModal(false);
       setTitle('');
       setNotes('');
@@ -64,7 +64,7 @@ export const EventsView: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await EventRepository.deleteEvent(id);
-      await refreshActiveData();
+      await refreshEvents();
       showToast('Đã xóa sự kiện');
     } catch (err: any) {
       showToast('Lỗi khi xóa sự kiện: ' + (err.message || ''), 'error');

@@ -35,7 +35,7 @@ export const SendZaloModal: React.FC<SendZaloModalProps> = ({
   defaultTopic = 'Nhận xét tình hình học tập',
   onSavedContact,
 }) => {
-  const { activeClass, currentUser, parents, refreshActiveData, showToast } = useApp();
+  const { activeClass, currentUser, parents, refreshParents, showToast } = useApp();
 
   // Find parent for this student
   const existingParent = parents.find(
@@ -178,7 +178,7 @@ export const SendZaloModal: React.FC<SendZaloModalProps> = ({
           primary: true,
         });
         if (onSavedContact) onSavedContact(saved);
-        await refreshActiveData();
+        await refreshParents();
       }
 
       // 2. Copy message text to clipboard
@@ -229,7 +229,7 @@ export const SendZaloModal: React.FC<SendZaloModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-5 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -444,14 +444,14 @@ export const SendZaloModal: React.FC<SendZaloModalProps> = ({
         </div>
 
         {/* Modal Footer Buttons */}
-        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+        <div className="px-5 py-3.5 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleCopyOnly}
-              className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Đã sao chép!' : 'Sao chép tin nhắn'}</span>
             </button>
 
@@ -459,7 +459,7 @@ export const SendZaloModal: React.FC<SendZaloModalProps> = ({
               <button
                 type="button"
                 onClick={handleOpenSMS}
-                className="px-2.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl font-semibold text-xs hidden sm:flex items-center gap-1 transition-colors cursor-pointer"
+                className="px-2.5 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-xs hidden sm:flex items-center gap-1 transition-colors cursor-pointer"
                 title="Gửi tin qua SMS điện thoại"
               >
                 <span>SMS</span>
@@ -471,7 +471,7 @@ export const SendZaloModal: React.FC<SendZaloModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
             >
               Đóng
             </button>

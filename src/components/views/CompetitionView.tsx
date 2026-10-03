@@ -37,7 +37,7 @@ export const CompetitionView: React.FC = () => {
     currentUser,
     students,
     competitionEntries,
-    refreshActiveData,
+    refreshEvents,
     showToast,
   } = useApp();
 
@@ -101,7 +101,7 @@ export const CompetitionView: React.FC = () => {
       });
 
       setCustomNote('');
-      await refreshActiveData();
+      await refreshEvents();
       showToast(`Đã ${delta > 0 ? 'cộng' : 'trừ'} ${Math.abs(delta)} điểm cho ${selectedGroup}!`);
     } catch (err: any) {
       showToast('Lỗi khi ghi nhận thi đua: ' + (err.message || ''), 'error');
@@ -113,7 +113,7 @@ export const CompetitionView: React.FC = () => {
   const handleDeleteEntry = async (id: string) => {
     try {
       await CompetitionRepository.deleteEntry(id);
-      await refreshActiveData();
+      await refreshEvents();
       showToast('Đã xóa lượt chấm điểm này');
     } catch (err: any) {
       showToast('Lỗi khi xóa: ' + (err.message || ''), 'error');

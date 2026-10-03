@@ -43,7 +43,7 @@ export const AttendanceView: React.FC = () => {
     currentUser,
     students,
     attendanceRecords,
-    refreshActiveData,
+    refreshAttendance,
     showToast,
     setActiveTab,
   } = useApp();
@@ -153,7 +153,7 @@ export const AttendanceView: React.FC = () => {
       }));
 
       await AttendanceRepository.saveAttendanceBatch(activeClass.id, currentUser.uid, selectedDate, batchPayload);
-      await refreshActiveData();
+      await refreshAttendance();
       setHasChanges(false);
       showToast(`Đã lưu bảng điểm danh ngày ${selectedDate}!`);
     } catch (err: any) {

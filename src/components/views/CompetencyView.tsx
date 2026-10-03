@@ -28,7 +28,7 @@ export const CompetencyView: React.FC = () => {
     students,
     competencies,
     assessments,
-    refreshActiveData,
+    refreshAssessments,
     showToast,
     setActiveTab,
   } = useApp();
@@ -163,7 +163,7 @@ export const CompetencyView: React.FC = () => {
       }
 
       await LearningRepository.saveCompetencyBatch(activeClass.id, currentUser.uid, batchItems);
-      await refreshActiveData();
+      await refreshAssessments();
       showToast('Đã lưu đánh giá năng lực & phẩm chất học sinh!');
     } catch (err: any) {
       showToast('Lỗi khi lưu đánh giá: ' + (err.message || ''), 'error');

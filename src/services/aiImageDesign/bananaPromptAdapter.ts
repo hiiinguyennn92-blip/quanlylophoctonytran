@@ -68,112 +68,61 @@ ${brief.editContext?.editRequest || brief.purpose || 'Thực hiện tinh chỉnh
         ? brief.prohibitedElements.map((p) => `- Không ${p}`).join('\n')
         : '- Không watermark, không logo lạ, không chữ tiếng Anh vô nghĩa, không chi tiết rùng rợn hoặc méo mó.';
 
-      promptText = `TARGET: Google Nano Banana (${engine}).
+      promptText = `[BLOCK 1: HỆ ĐIỀU HÀNH & MỤC TIÊU NGHỆ THUẬT (SYSTEM TARGET & DIRECTIVE)]
+• Target Model: Google Nano Banana 2 (${targetModel})
+• Vai trò: Master Pedagogical Art Director & Visual Educational Designer
+• Mục đích thiết kế: ${brief.purpose}
+• Đối tượng tiếp nhận: ${brief.audience}
+• Định dạng sản phẩm: ${brief.presentationType}
 
-NHIỆM VỤ:
-Tạo một hình ảnh hoàn chỉnh dùng cho: ${brief.purpose}
-Đối tượng xem: ${brief.audience}
-
-CHỦ ĐỀ:
-${brief.subject}
-
-CÁCH TRÌNH BÀY:
-${brief.presentationType}
-
-TỶ LỆ:
-${brief.aspectRatio}
-Thiết kế toàn bộ bố cục phù hợp chính xác với tỷ lệ này.
-
-BỐ CỤC:
-${brief.composition.layout}
-Điểm nhấn chính: ${brief.composition.focalPoint}
-
-THỨ TỰ QUAN SÁT:
-Người xem cần nhìn theo thứ tự:
-${readingOrderText}
-
-Sử dụng:
-* kích thước;
-* tương phản;
-* màu;
-* khoảng trắng;
-* hướng nhìn;
-* đường dẫn thị giác;
-để điều khiển thứ tự này.
-
-TIỀN CẢNH:
-${foregroundText}
-Không che điểm nhấn chính.
-
-KHU VỰC TRUNG TÂM:
-${centerText}
-Đây là chủ thể quan trọng nhất của hình.
-
-HẬU CẢNH:
-${backgroundElementsText}
-Hậu cảnh phải hỗ trợ nội dung nhưng không cạnh tranh với chủ thể.
-
-CẤU TRÚC CHÍNH (TINH CHỈNH THEO CHỦ ĐỀ):
-Dạng cấu trúc: ${structureForm}
-Chi tiết phân rã từng phần:
+[BLOCK 2: CHỦ THỂ TRUNG TÂM & BẢN SẮC HỌC ĐƯỜNG VIỆT NAM (SUBJECT & CULTURAL CONTEXT)]
+• Chủ thể cốt lõi: ${centerText}
+• Bản sắc văn hóa & bối cảnh: Học sinh tiểu học Việt Nam trong đồng phục tinh tươm (áo sơ mi trắng, quần/váy sẫm màu, khăn quàng đỏ Đội viên Thiếu niên Tiền phong rực rỡ từ lớp 3 trở lên), nét mặt tươi sáng, biểu cảm hồn nhiên, thân thiện và giàu năng lượng tích cực.
+• Tương tác & Hành động chính: ${brief.subject}
+• Cấu trúc nội dung chính: ${structureForm}
 ${structureDetails}
+• Chi tiết phụ trợ: ${flankingText}
 
-YẾU TỐ HỖ TRỢ:
-${flankingText}
+[BLOCK 3: PHONG CÁCH NGHỆ THUẬT & CHẤT LIỆU ĐỒ HỌA (ARTISTIC STYLE & MEDIUM)]
+• Kỹ thuật tạo hình: ${brief.style.medium}
+• Tính cách thị giác: ${brief.style.visualCharacter}
+• Đường nét & Viền vẽ: ${brief.style.linework} - nét vẽ dứt khoát, sắc sảo, chống méo mó hoặc nhòe mờ.
 
-PHONG CÁCH:
-Kỹ thuật: ${brief.style.medium}
-Tính cách: ${brief.style.visualCharacter}
-Đường nét: ${brief.style.linework}
+[BLOCK 4: BỐ CỤC, THỨ TỰ QUAN SÁT & VÙNG AN TOÀN CHỮ (COMPOSITION, FLOW & TEXT SAFE ZONES)]
+• Tỷ lệ khung hình chuẩn: ${brief.aspectRatio} (Bắt buộc giữ đúng tỷ lệ không co giãn)
+• Bố cục không gian: ${brief.composition.layout}
+• Điểm nhấn thị giác chính (Focal Point): ${brief.composition.focalPoint}
+• Thứ tự dẫn dắt mắt nhìn (Visual Reading Hierarchy):
+${readingOrderText}
+• Tiền cảnh (Foreground): ${foregroundText}
+• Hậu cảnh (Background): ${backgroundElementsText}
+• Khoảng thở & Vùng an toàn chữ (Negative Space & Margins): Dành tối thiểu 15-20% diện tích thoáng sạch cho khoảng thở hoặc vị trí gắn tiêu đề, tuyệt đối không để chi tiết phụ chen chúc che khuất chữ.
 
-ÁNH SÁNG & ĐỔ BÓNG:
-${brief.style.shading}
+[BLOCK 5: ÁNH SÁNG, BẦU KHÔNG KHÍ & BẢNG MÀU SƯ PHẠM (LIGHTING & COLOR HARMONY)]
+• Chiếu sáng & Đổ bóng: ${brief.style.shading}, ánh sáng tự nhiên dịu nhẹ của buổi sáng sân trường Việt Nam.
+• Bảng màu chủ đạo (Color Palette): ${brief.style.colorPalette?.join(', ') || '#059669 (Xanh ngọc sư phạm), #0284c7 (Xanh bầu trời), #f59e0b (Vàng nắng ấm), #f8fafc (Nền sáng)'}
+• Cảm xúc truyền tải: Ấm áp, nhân văn, kích thích trí tò mò và niềm vui học tập của học sinh tiểu học.
 
-BẢNG MÀU:
-${brief.style.colorPalette?.join(', ') || 'Tươi sáng, sư phạm, hài hòa'}
-Giữ màu nhất quán trên toàn hình.
-
-CHỮ TRONG HÌNH (TINH CHỈNH THEO CHỦ ĐỀ):
+[BLOCK 6: QUY CHUẨN KHÓA CHỮ TIẾNG VIỆT CÓ DẤU (EXACT VIETNAMESE TYPOGRAPHY)]
 ${
   brief.text.enabled && brief.text.exactStrings?.length
-    ? `Chỉ hiển thị các chuỗi sau:
+    ? `• Danh sách chữ hiển thị bắt buộc (Exact Strings):
 ${exactTextList}
-
-Phân cấp chữ hiển thị:
+• Phân cấp kiểu chữ:
 ${hierarchyText}
-
-Quy chuẩn kiểu chữ:
-${brief.text.fontPreference || 'Be Vietnam Pro / Inter (Font tiếng Việt chuẩn mực, rõ dấu)'}
-
-Hiển thị chính xác từng chuỗi.
-Không viết lại.
-Không dịch.
-Không thêm chữ ngoài danh sách.
-Tất cả chữ phải:
-* là tiếng Việt;
-* đầy đủ dấu;
-* dễ đọc;
-* đúng chính tả.`
-    : 'Hình ảnh không chứa chữ ký tự.'
+• Tiêu chuẩn Font: ${brief.text.fontPreference || 'Be Vietnam Pro / Inter (Font Sans-serif hiện đại, dấu thanh tiếng Việt sắc nét)'}
+• Nguyên tắc typographic: Hiển thị chính xác từng ký tự có dấu, không thêm bớt, không dịch, TUYỆT ĐỐI KHÔNG sinh chữ rác/chữ giả (Zero Lorem Ipsum / Gibberish).`
+    : '• Hình ảnh đồ họa thuần túy, không chèn chữ ký tự.'
 }
 
-PHẢI GIỮ:
-${preservationText}
-Những yếu tố này có ưu tiên cao. Không tự thay đổi.
-
-KHÔNG ĐƯỢC CÓ:
+[BLOCK 7: BỘ LỌC CẤM & GIỚI HẠN AN TOÀN (NEGATIVE CONSTRAINTS & SANITIZER)]
 ${prohibitedText}
+• Không biến dạng bàn tay, thừa/thiếu ngón tay, mắt méo lệch (No anatomical deformation).
+• Không biểu tượng ngoại lai không phù hợp học đường Việt Nam (Không xe bus vàng kiểu Mỹ, không ký hiệu lạ).
+• Không watermark, không logo lạ, không màu sắc u ám/kinh dị.
 
-CHẤT LƯỢNG CUỐI:
-Hình ảnh phải:
-* dễ hiểu trong vài giây;
-* có điểm nhấn rõ;
-* bố cục cân bằng;
-* không rối;
-* có chiều sâu phù hợp;
-* phù hợp đối tượng học sinh tiểu học Việt Nam;
-* không chứa vật thể dư;
-* không chứa chữ ngẫu nhiên.`;
+[BLOCK 8: ĐỘ PHÂN GIẢI & TIÊU CHUẨN XUẤT BẢN (RESOLUTION & PRODUCTION FIDELITY)]
+• Chuẩn đồ họa: 4K High Resolution, vector clarity, sắc nét từng chi tiết, sẵn sàng in ấn khổ lớn hoặc trình chiếu lớp học thông minh.`;
     }
 
     return {

@@ -92,7 +92,8 @@ export const AICommentView: React.FC = () => {
     currentUser,
     students,
     assessments,
-    refreshActiveData,
+    studentLearningJournals,
+    refreshAssessments,
     showToast,
   } = useApp();
 
@@ -151,6 +152,26 @@ export const AICommentView: React.FC = () => {
       setLevel(latest.level);
       if (latest.score !== undefined) setScore(String(latest.score));
       if (latest.teacherComment) setStrengths(latest.teacherComment);
+    }
+
+    // Check non-private learning journal observations for pedagogy enrichment (Requirement 34: strictly omit private notes)
+    const publicJournals = studentLearningJournals.filter(
+      (j) => j.studentId === sId && !j.privateToTeacher
+    );
+    if (publicJournals.length > 0) {
+      const topProgress = publicJournals
+        .filter((j) => j.type === 'progress' || j.type === 'achievement')
+        .map((j) => j.observation)
+        .slice(0, 2)
+        .join('; ');
+      if (topProgress) setStrengths(topProgress);
+
+      const topDifficulties = publicJournals
+        .filter((j) => j.type === 'difficulty' || j.type === 'follow_up')
+        .map((j) => j.observation)
+        .slice(0, 2)
+        .join('; ');
+      if (topDifficulties) setImprovements(topDifficulties);
     }
   };
 
@@ -224,7 +245,7 @@ export const AICommentView: React.FC = () => {
         assessmentType: 'thường xuyên',
       });
 
-      await refreshActiveData();
+      await refreshAssessments();
       showToast('Đã lưu nhận xét vào hồ sơ học sinh thành công!');
     } catch (err: any) {
       showToast('Lỗi khi lưu nhận xét: ' + (err.message || ''), 'error');

@@ -5,6 +5,7 @@ import {
   AIClassSummaryRequest,
   AIClassMeetingRequest,
   AIAssistantRequest,
+  AIAssistantResponse,
   AIBirthdayWishRequest,
   AICompetencyBatchRequest,
   AICompetencyBatchResponse,
@@ -58,20 +59,53 @@ async function parseResponseOrThrow<T>(res: Response, defaultErrMsg: string): Pr
   return res.json();
 }
 
+function getClientSessionId(): string {
+  if (typeof window === 'undefined') return 'server';
+  let sid = sessionStorage.getItem('app_session_id');
+  if (!sid) {
+    sid = 'sess_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+    sessionStorage.setItem('app_session_id', sid);
+  }
+  return sid;
+}
+
 /**
- * Core authenticated fetch client for AI backend endpoints
+ * Core authenticated fetch client for AI backend endpoints with automatic retry & jitter
  */
-async function postAI<T>(endpoint: string, payload: any, defaultErrMsg: string): Promise<T> {
-  const authHeaders = await getAuthHeader();
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-    },
-    body: JSON.stringify(payload),
-  });
-  return parseResponseOrThrow<T>(res, defaultErrMsg);
+async function postAI<T>(endpoint: string, payload: any, defaultErrMsg: string, maxRetries = 2): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      const authHeaders = await getAuthHeader();
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Session-Id': getClientSessionId(),
+          ...authHeaders,
+        },
+        body: JSON.stringify(payload),
+      });
+      return await parseResponseOrThrow<T>(res, defaultErrMsg);
+    } catch (err: any) {
+      attempt++;
+      const msg = String(err?.message || '');
+      const isRetryable =
+        msg.includes('503') ||
+        msg.includes('429') ||
+        msg.includes('SERVER_BUSY') ||
+        msg.includes('RATE_LIMIT_EXCEEDED') ||
+        msg.includes('QUEUE_TIMEOUT') ||
+        msg.includes('xử lý nhiều yêu cầu');
+
+      if (attempt <= maxRetries && isRetryable) {
+        const delay = Math.min(800 * Math.pow(2, attempt - 1) + Math.random() * 400, 3500);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 export class AIClientService {
@@ -120,8 +154,8 @@ export class AIClientService {
     return postAI<any>('/api/ai/class-meeting', payload, 'Lỗi từ máy chủ khi soạn kế hoạch sinh hoạt lớp.');
   }
 
-  public static async askAssistant(payload: AIAssistantRequest): Promise<{ reply: string; followUps: string[] }> {
-    return postAI<{ reply: string; followUps: string[] }>('/api/ai/assistant', payload, 'Lỗi từ máy chủ khi trò chuyện cùng Trợ lý AI.');
+  public static async askAssistant(payload: AIAssistantRequest): Promise<AIAssistantResponse> {
+    return postAI<AIAssistantResponse>('/api/ai/assistant', payload, 'Lỗi từ máy chủ khi trò chuyện cùng Trợ lý AI.');
   }
 
   public static async generateBirthdayWish(payload: AIBirthdayWishRequest): Promise<{ wish: string }> {

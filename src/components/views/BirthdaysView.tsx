@@ -109,6 +109,7 @@ export const BirthdaysView: React.FC = () => {
               setSelectedStudent(todayBirthdays[0]);
               handleGenerateWish();
             }}
+            data-theme-override
             className="px-4 py-2 bg-white text-rose-700 hover:bg-rose-50 rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer"
           >
             Tạo lời chúc ngay

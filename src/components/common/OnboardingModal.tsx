@@ -68,7 +68,7 @@ export const OnboardingModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-5 text-white relative">
           {classes.length > 0 && (
@@ -93,12 +93,12 @@ export const OnboardingModal: React.FC = () => {
         </div>
 
         {/* Quick Demo Option */}
-        <div className="p-5 bg-amber-50/70 border-b border-amber-100 flex items-center justify-between gap-4">
+        <div className="p-5 bg-amber-50/70 dark:bg-amber-950/40 border-b border-amber-100 dark:border-amber-900/60 flex items-center justify-between gap-4">
           <div className="flex items-start gap-2.5">
-            <Sparkles className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-xs font-bold text-slate-800">Trải nghiệm nhanh với dữ liệu mẫu?</h4>
-              <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Trải nghiệm nhanh với dữ liệu mẫu?</h4>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 leading-snug">
                 Nạp sẵn Lớp 3A1 với 10 học sinh, chuyên cần, đánh giá học tập, thi đua tổ và sổ nhật ký.
               </p>
             </div>
